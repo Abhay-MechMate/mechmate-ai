@@ -10,12 +10,12 @@
     <form method="post" action="/diagnose" class="form-grid">
         <div class="full">
             <label>Select Vehicle</label>
-            <select name="vehicle_index">
+            <select name="vehicle_id">
                 {% if vehicles %}
                     {% for vehicle in vehicles %}
-                        <option value="{{ loop.index0 }}">
-                            {{ vehicle.year }} {{ vehicle.make }} {{ vehicle.model }} — {{ "{:,}".format(vehicle.mileage) }} miles
-                        </option>
+                        <option value="{{ vehicle.id }}">
+    				{{ vehicle.year }} {{ vehicle.make }} {{ vehicle.model }} — {{ "{:,}".format(vehicle.mileage) }} miles
+			</option>
                     {% endfor %}
                 {% else %}
                     <option value="0">No vehicle saved yet</option>

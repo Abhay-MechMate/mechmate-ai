@@ -3,6 +3,15 @@ from fastapi.responses import HTMLResponse
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
 
+from app.database import (
+    init_db,
+    add_vehicle,
+    get_vehicles,
+    get_vehicle,
+    add_diagnostic_session,
+    get_diagnostic_history,
+)
+
 
 app = FastAPI(title="MechMate AI")
 
@@ -10,9 +19,8 @@ app.mount("/static", StaticFiles(directory="app/static"), name="static")
 
 templates = Jinja2Templates(directory="app/templates")
 
-
-saved_vehicles = []
-diagnostic_history = []
+# Create database tables when the website starts
+init_db()
 
 
 OBD_DATABASE = {
@@ -188,15 +196,17 @@ def home(request: Request):
 
 @app.get("/vehicles", response_class=HTMLResponse)
 def vehicles_page(request: Request):
+    vehicles = get_vehicles()
+
     return templates.TemplateResponse(
         request,
         "vehicles.html",
-        {"vehicles": saved_vehicles}
+        {"vehicles": vehicles}
     )
 
 
 @app.post("/vehicles", response_class=HTMLResponse)
-def add_vehicle(
+def add_vehicle_page(
     request: Request,
     year: int = Form(...),
     make: str = Form(...),
@@ -204,21 +214,21 @@ def add_vehicle(
     mileage: int = Form(...),
     engine: str = Form("")
 ):
-    vehicle = {
-        "year": year,
-        "make": make,
-        "model": model,
-        "mileage": mileage,
-        "engine": engine,
-    }
+    add_vehicle(
+        year=year,
+        make=make,
+        model=model,
+        mileage=mileage,
+        engine=engine,
+    )
 
-    saved_vehicles.append(vehicle)
+    vehicles = get_vehicles()
 
     return templates.TemplateResponse(
         request,
         "vehicles.html",
         {
-            "vehicles": saved_vehicles,
+            "vehicles": vehicles,
             "message": "Vehicle saved successfully."
         }
     )
@@ -226,11 +236,13 @@ def add_vehicle(
 
 @app.get("/diagnose", response_class=HTMLResponse)
 def diagnose_page(request: Request):
+    vehicles = get_vehicles()
+
     return templates.TemplateResponse(
         request,
         "diagnose.html",
         {
-            "vehicles": saved_vehicles,
+            "vehicles": vehicles,
             "result": None
         }
     )
@@ -239,7 +251,7 @@ def diagnose_page(request: Request):
 @app.post("/diagnose", response_class=HTMLResponse)
 def run_diagnosis(
     request: Request,
-    vehicle_index: int = Form(0),
+    vehicle_id: int = Form(0),
     obd_code: str = Form(""),
     symptom: str = Form("")
 ):
@@ -265,23 +277,23 @@ def run_diagnosis(
 
     selected_vehicle = None
 
-    if saved_vehicles and 0 <= vehicle_index < len(saved_vehicles):
-        selected_vehicle = saved_vehicles[vehicle_index]
+    if vehicle_id > 0:
+        selected_vehicle = get_vehicle(vehicle_id)
 
-    history_item = {
-        "vehicle": selected_vehicle,
-        "input": input_text,
-        "summary": result["summary"],
-        "severity": result["severity"],
-    }
+    add_diagnostic_session(
+        vehicle_id=vehicle_id if selected_vehicle else None,
+        input_text=input_text,
+        summary=result["summary"],
+        severity=result["severity"],
+    )
 
-    diagnostic_history.append(history_item)
+    vehicles = get_vehicles()
 
     return templates.TemplateResponse(
         request,
         "diagnose.html",
         {
-            "vehicles": saved_vehicles,
+            "vehicles": vehicles,
             "result": result,
             "input_text": input_text,
             "selected_vehicle": selected_vehicle,
@@ -291,10 +303,12 @@ def run_diagnosis(
 
 @app.get("/history", response_class=HTMLResponse)
 def history_page(request: Request):
+    history = get_diagnostic_history()
+
     return templates.TemplateResponse(
         request,
         "history.html",
         {
-            "history": diagnostic_history
+            "history": history
         }
     )

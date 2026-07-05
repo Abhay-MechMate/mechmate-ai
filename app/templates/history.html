@@ -2,23 +2,25 @@
 
 {% block content %}
 <h1>Diagnostic History</h1>
-<p class="subtext">This page shows diagnostic sessions from the current server run.</p>
+<p class="subtext">This page shows saved diagnostic sessions from the SQLite database.</p>
 
 <section class="card">
     {% if history %}
         {% for item in history %}
             <div class="list-item">
-                {% if item.vehicle %}
+                {% if item.year %}
                     <strong>
-                        {{ item.vehicle.year }} {{ item.vehicle.make }} {{ item.vehicle.model }}
+                        {{ item.year }} {{ item.make }} {{ item.model }}
                     </strong>
+                    <p>{{ "{:,}".format(item.mileage) }} miles</p>
                 {% else %}
                     <strong>No vehicle selected</strong>
                 {% endif %}
 
-                <p><strong>Input:</strong> {{ item.input }}</p>
+                <p><strong>Input:</strong> {{ item.input_text }}</p>
                 <p><strong>Summary:</strong> {{ item.summary }}</p>
                 <p><strong>Severity:</strong> {{ item.severity }}</p>
+                <p><strong>Date:</strong> {{ item.created_at }}</p>
             </div>
         {% endfor %}
     {% else %}
