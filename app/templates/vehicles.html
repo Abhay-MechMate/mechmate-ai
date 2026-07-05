@@ -1,0 +1,61 @@
+{% extends "base.html" %}
+
+{% block content %}
+<h1>Vehicle Profiles</h1>
+<p class="subtext">Add vehicles that will be used for diagnostic sessions.</p>
+
+{% if message %}
+<div class="success">{{ message }}</div>
+{% endif %}
+
+<section class="card">
+    <h2>Add Vehicle</h2>
+
+    <form method="post" action="/vehicles" class="form-grid">
+        <div>
+            <label>Year</label>
+            <input type="number" name="year" placeholder="2018" required>
+        </div>
+
+        <div>
+            <label>Make</label>
+            <input type="text" name="make" placeholder="Honda" required>
+        </div>
+
+        <div>
+            <label>Model</label>
+            <input type="text" name="model" placeholder="Civic" required>
+        </div>
+
+        <div>
+            <label>Mileage</label>
+            <input type="number" name="mileage" placeholder="78000" required>
+        </div>
+
+        <div class="full">
+            <label>Engine / Notes</label>
+            <input type="text" name="engine" placeholder="1.5T, 2.0 NA, V6, etc.">
+        </div>
+
+        <button class="button full" type="submit">Save Vehicle</button>
+    </form>
+</section>
+
+<section class="card">
+    <h2>Saved Vehicles</h2>
+
+    {% if vehicles %}
+        {% for vehicle in vehicles %}
+            <div class="list-item">
+                <strong>{{ vehicle.year }} {{ vehicle.make }} {{ vehicle.model }}</strong>
+                <p>{{ "{:,}".format(vehicle.mileage) }} miles</p>
+                {% if vehicle.engine %}
+                    <p>Engine / Notes: {{ vehicle.engine }}</p>
+                {% endif %}
+            </div>
+        {% endfor %}
+    {% else %}
+        <p>No vehicles saved yet.</p>
+    {% endif %}
+</section>
+{% endblock %}

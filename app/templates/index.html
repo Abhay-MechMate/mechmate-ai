@@ -1,0 +1,39 @@
+{% extends "base.html" %}
+
+{% block content %}
+<section class="hero">
+    <p class="eyebrow">Automotive Diagnostic Intelligence Platform</p>
+    <h1>MechMate AI</h1>
+    <p>
+        A self-hosted automotive diagnostic website for vehicle profiles,
+        OBD-II interpretation, symptom-based troubleshooting, and future voice support.
+    </p>
+
+    <div class="button-row">
+        <a class="button" href="/vehicles">Add Vehicle</a>
+        <a class="button secondary" href="/diagnose">Run Diagnosis</a>
+    </div>
+</section>
+
+<section class="grid">
+    <div class="card">
+        <h2>Vehicle Profiles</h2>
+        <p>Save year, make, model, mileage, and engine notes.</p>
+    </div>
+
+    <div class="card">
+        <h2>OBD-II Codes</h2>
+        <p>Interpret common check engine light codes like P0301, P0420, and P0171.</p>
+    </div>
+
+    <div class="card">
+        <h2>Symptom Diagnostics</h2>
+        <p>Get inspection steps for issues like brake vibration, overheating, and rough running.</p>
+    </div>
+
+    <div class="card">
+        <h2>Future Voice Agent</h2>
+        <p>Later versions will connect Syllable AI for voice-powered diagnostics.</p>
+    </div>
+</section>
+{% endblock %}

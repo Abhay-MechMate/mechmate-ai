@@ -1,0 +1,28 @@
+{% extends "base.html" %}
+
+{% block content %}
+<h1>Diagnostic History</h1>
+<p class="subtext">This page shows diagnostic sessions from the current server run.</p>
+
+<section class="card">
+    {% if history %}
+        {% for item in history %}
+            <div class="list-item">
+                {% if item.vehicle %}
+                    <strong>
+                        {{ item.vehicle.year }} {{ item.vehicle.make }} {{ item.vehicle.model }}
+                    </strong>
+                {% else %}
+                    <strong>No vehicle selected</strong>
+                {% endif %}
+
+                <p><strong>Input:</strong> {{ item.input }}</p>
+                <p><strong>Summary:</strong> {{ item.summary }}</p>
+                <p><strong>Severity:</strong> {{ item.severity }}</p>
+            </div>
+        {% endfor %}
+    {% else %}
+        <p>No diagnostic history yet.</p>
+    {% endif %}
+</section>
+{% endblock %}

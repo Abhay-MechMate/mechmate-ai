@@ -1,0 +1,27 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>MechMate AI</title>
+    <link rel="stylesheet" href="/static/styles.css">
+</head>
+<body>
+    <header class="navbar">
+        <div class="logo">MechMate AI</div>
+        <nav>
+            <a href="/">Home</a>
+            <a href="/vehicles">Vehicles</a>
+            <a href="/diagnose">Diagnose</a>
+            <a href="/history">History</a>
+        </nav>
+    </header>
+
+    <main class="container">
+        {% block content %}{% endblock %}
+    </main>
+
+    <footer>
+        <p>MechMate AI Internship Prototype — Abhay Mahajan</p>
+    </footer>
+</body>
+</html>
