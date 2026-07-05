@@ -1,5 +1,6 @@
 from pathlib import Path
 import sqlite3
+import json
 
 
 DB_PATH = Path("data") / "mechmate.db"
@@ -38,11 +39,37 @@ def init_db():
                 input_text TEXT NOT NULL,
                 summary TEXT NOT NULL,
                 severity TEXT NOT NULL,
+                causes TEXT DEFAULT '[]',
+                inspection TEXT DEFAULT '[]',
+                parts TEXT DEFAULT '[]',
+                safety TEXT DEFAULT '',
                 created_at TEXT DEFAULT CURRENT_TIMESTAMP,
                 FOREIGN KEY (vehicle_id) REFERENCES vehicles(id)
             )
             """
         )
+
+        # Migration section:
+        # If the table already existed from the previous version,
+        # add the new full-diagnosis columns without deleting old data.
+        existing_columns = connection.execute(
+            "PRAGMA table_info(diagnostic_sessions)"
+        ).fetchall()
+
+        existing_column_names = [column["name"] for column in existing_columns]
+
+        new_columns = {
+            "causes": "TEXT DEFAULT '[]'",
+            "inspection": "TEXT DEFAULT '[]'",
+            "parts": "TEXT DEFAULT '[]'",
+            "safety": "TEXT DEFAULT ''",
+        }
+
+        for column_name, column_definition in new_columns.items():
+            if column_name not in existing_column_names:
+                connection.execute(
+                    f"ALTER TABLE diagnostic_sessions ADD COLUMN {column_name} {column_definition}"
+                )
 
         connection.commit()
 
@@ -96,6 +123,10 @@ def add_diagnostic_session(
     input_text: str,
     summary: str,
     severity: str,
+    causes: list[str],
+    inspection: list[str],
+    parts: list[str],
+    safety: str,
 ):
     with get_connection() as connection:
         cursor = connection.execute(
@@ -104,11 +135,24 @@ def add_diagnostic_session(
                 vehicle_id,
                 input_text,
                 summary,
-                severity
+                severity,
+                causes,
+                inspection,
+                parts,
+                safety
             )
-            VALUES (?, ?, ?, ?)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?)
             """,
-            (vehicle_id, input_text, summary, severity),
+            (
+                vehicle_id,
+                input_text,
+                summary,
+                severity,
+                json.dumps(causes),
+                json.dumps(inspection),
+                json.dumps(parts),
+                safety,
+            ),
         )
 
         connection.commit()
@@ -125,6 +169,10 @@ def get_diagnostic_history():
                 diagnostic_sessions.input_text,
                 diagnostic_sessions.summary,
                 diagnostic_sessions.severity,
+                diagnostic_sessions.causes,
+                diagnostic_sessions.inspection,
+                diagnostic_sessions.parts,
+                diagnostic_sessions.safety,
                 diagnostic_sessions.created_at,
                 vehicles.year,
                 vehicles.make,
@@ -138,4 +186,15 @@ def get_diagnostic_history():
             """
         ).fetchall()
 
-        return [dict(row) for row in rows]
+        history = []
+
+        for row in rows:
+            item = dict(row)
+
+            item["causes"] = json.loads(item["causes"] or "[]")
+            item["inspection"] = json.loads(item["inspection"] or "[]")
+            item["parts"] = json.loads(item["parts"] or "[]")
+
+            history.append(item)
+
+        return history

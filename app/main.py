@@ -281,11 +281,15 @@ def run_diagnosis(
         selected_vehicle = get_vehicle(vehicle_id)
 
     add_diagnostic_session(
-        vehicle_id=vehicle_id if selected_vehicle else None,
-        input_text=input_text,
-        summary=result["summary"],
-        severity=result["severity"],
-    )
+    	vehicle_id=vehicle_id if selected_vehicle else None,
+    	input_text=input_text,
+    	summary=result["summary"],
+    	severity=result["severity"],
+    	causes=result["causes"],
+   	inspection=result["inspection"],
+    	parts=result["parts"],
+    	safety=result["safety"],
+)
 
     vehicles = get_vehicles()
 

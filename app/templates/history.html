@@ -20,6 +20,43 @@
                 <p><strong>Input:</strong> {{ item.input_text }}</p>
                 <p><strong>Summary:</strong> {{ item.summary }}</p>
                 <p><strong>Severity:</strong> {{ item.severity }}</p>
+
+                <h3>Possible Causes</h3>
+                {% if item.causes %}
+                    <ul>
+                        {% for cause in item.causes %}
+                            <li>{{ cause }}</li>
+                        {% endfor %}
+                    </ul>
+                {% else %}
+                    <p>No causes saved.</p>
+                {% endif %}
+
+                <h3>Recommended Inspection</h3>
+                {% if item.inspection %}
+                    <ol>
+                        {% for step in item.inspection %}
+                            <li>{{ step }}</li>
+                        {% endfor %}
+                    </ol>
+                {% else %}
+                    <p>No inspection steps saved.</p>
+                {% endif %}
+
+                <h3>Suggested Parts or Tools</h3>
+                {% if item.parts %}
+                    <ul>
+                        {% for part in item.parts %}
+                            <li>{{ part }}</li>
+                        {% endfor %}
+                    </ul>
+                {% else %}
+                    <p>No parts or tools saved.</p>
+                {% endif %}
+
+                <h3>Safety Note</h3>
+                <p>{{ item.safety }}</p>
+
                 <p><strong>Date:</strong> {{ item.created_at }}</p>
             </div>
         {% endfor %}
