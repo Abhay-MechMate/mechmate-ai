@@ -194,17 +194,42 @@ def unknown_code_diagnosis(obd_code: str):
     }
 
 
-def run_diagnostic(obd_code: str = "", symptom: str = ""):
+def format_vehicle_context(vehicle: dict | None):
+    if not vehicle:
+        return "No vehicle selected"
+
+    year = vehicle.get("year")
+    make = vehicle.get("make")
+    model = vehicle.get("model")
+    mileage = vehicle.get("mileage")
+    engine = vehicle.get("engine") or "engine not specified"
+
+    return f"{year} {make} {model}, {mileage:,} miles, {engine}"
+
+
+def run_diagnostic(
+    obd_code: str = "",
+    symptom: str = "",
+    vehicle: dict | None = None,
+):
     obd_code = obd_code.strip().upper()
     symptom = symptom.strip()
 
+    vehicle_context = format_vehicle_context(vehicle)
+
     if obd_code and obd_code in OBD_DATABASE:
-        return OBD_DATABASE[obd_code], obd_code
+        result = OBD_DATABASE[obd_code].copy()
+        result["summary"] = f"{result['summary']} Vehicle context: {vehicle_context}."
+        return result, obd_code
 
     if obd_code and obd_code not in OBD_DATABASE:
-        return unknown_code_diagnosis(obd_code), obd_code
+        result = unknown_code_diagnosis(obd_code)
+        result["summary"] = f"{result['summary']} Vehicle context: {vehicle_context}."
+        return result, obd_code
 
     if symptom:
-        return diagnose_symptom(symptom), symptom
+        result = diagnose_symptom(symptom)
+        result["summary"] = f"{result['summary']} Vehicle context: {vehicle_context}."
+        return result, symptom
 
     return empty_diagnosis(), "No input"
