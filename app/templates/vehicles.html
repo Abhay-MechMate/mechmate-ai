@@ -10,36 +10,58 @@
 
 <section class="card">
     <h2>Add Vehicle</h2>
-
     <form method="post" action="/vehicles" class="form-grid">
-        <div>
-            <label>Year</label>
-            <input type="number" name="year" placeholder="2018" required>
-        </div>
+    <div>
+        <label>Year</label>
+        <select name="year" id="vehicleYear" required>
+            <option value="">Select year</option>
+        </select>
+    </div>
 
-        <div>
-            <label>Make</label>
-            <input type="text" name="make" placeholder="Honda" required>
-        </div>
+    <div>
+        <label>Make</label>
+        <select name="make" id="vehicleMake" required>
+            <option value="">Select make</option>
+            <option value="Toyota">Toyota</option>
+            <option value="Honda">Honda</option>
+            <option value="Subaru">Subaru</option>
+            <option value="Ford">Ford</option>
+            <option value="Chevrolet">Chevrolet</option>
+            <option value="GMC">GMC</option>
+            <option value="Jeep">Jeep</option>
+            <option value="Nissan">Nissan</option>
+            <option value="Hyundai">Hyundai</option>
+            <option value="Kia">Kia</option>
+            <option value="Mazda">Mazda</option>
+            <option value="BMW">BMW</option>
+            <option value="Mercedes-Benz">Mercedes-Benz</option>
+            <option value="Audi">Audi</option>
+            <option value="Lexus">Lexus</option>
+            <option value="Volkswagen">Volkswagen</option>
+            <option value="Other / Not Listed">Other / Not Listed</option>
+        </select>
+    </div>
 
-        <div>
-            <label>Model</label>
-            <input type="text" name="model" placeholder="Civic" required>
-        </div>
+    <div>
+        <label>Model</label>
+        <select name="model" id="vehicleModel" required disabled>
+            <option value="">Select make first</option>
+        </select>
+    </div>
 
-        <div>
-            <label>Mileage</label>
-            <input type="number" name="mileage" placeholder="78000" required>
-        </div>
+    <div>
+        <label>Mileage</label>
+        <input type="number" name="mileage" placeholder="78000" required>
+    </div>
 
-        <div class="full">
-            <label>Engine / Notes</label>
-            <input type="text" name="engine" placeholder="1.5T, 2.0 NA, V6, etc.">
-        </div>
+    <div class="full">
+        <label>Engine / Notes</label>
+        <input type="text" name="engine" placeholder="2.4L FA24, 1.5T, V6, trim, known issues, etc.">
+    </div>
 
-        <button class="button full" type="submit">Save Vehicle</button>
-    </form>
-</section>
+    <button class="button full" type="submit">Save Vehicle</button>
+</form>
+    </section>
 
 <section class="card">
     <h2>Saved Vehicles</h2>

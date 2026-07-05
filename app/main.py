@@ -93,16 +93,16 @@ def run_diagnosis(
     obd_code: str = Form(""),
     symptom: str = Form("")
 ):
-    result, input_text = run_diagnostic(
-        obd_code=obd_code,
-        symptom=symptom,
-    )
-
     selected_vehicle = None
 
     if vehicle_id > 0:
-        selected_vehicle = get_vehicle(vehicle_id)
+       selected_vehicle = get_vehicle(vehicle_id)
 
+    result, input_text = run_diagnostic(
+       obd_code=obd_code,
+       symptom=symptom,
+       vehicle=selected_vehicle,
+)
     add_diagnostic_session(
         vehicle_id=vehicle_id if selected_vehicle else None,
         input_text=input_text,
