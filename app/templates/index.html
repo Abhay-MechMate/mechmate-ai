@@ -2,38 +2,18 @@
 
 {% block content %}
 <section class="hero">
-    <p class="eyebrow">Automotive Diagnostic Intelligence Platform</p>
-    <h1>MechMate AI</h1>
-    <p>
-        A self-hosted automotive diagnostic website for vehicle profiles,
-        OBD-II interpretation, symptom-based troubleshooting, and future voice support.
-    </p>
-
-    <div class="button-row">
-        <a class="button" href="/vehicles">Add Vehicle</a>
-        <a class="button secondary" href="/diagnose">Run Diagnosis</a>
+    <div class="hero-copy">
+        <p class="eyebrow">Automotive diagnostic intelligence</p>
+        <h1>Know what your vehicle is telling you.</h1>
+        <p class="hero-text">Build a vehicle profile, interpret OBD-II codes, and follow a clear first-pass inspection path from one local dashboard.</p>
+        <div class="button-row"><a class="button" href="/diagnose">Start a diagnosis</a><a class="button secondary" href="/vehicles">Manage vehicles</a></div>
     </div>
+    <aside class="hero-panel" aria-label="System status"><p class="hero-panel-label">System status</p><p class="hero-panel-value">Local diagnostic workspace</p><p class="hero-panel-status"><span class="status-dot"></span>Ready for input</p></aside>
 </section>
-
-<section class="grid">
-    <div class="card">
-        <h2>Vehicle Profiles</h2>
-        <p>Save year, make, model, mileage, and engine notes.</p>
-    </div>
-
-    <div class="card">
-        <h2>OBD-II Codes</h2>
-        <p>Interpret common check engine light codes like P0301, P0420, and P0171.</p>
-    </div>
-
-    <div class="card">
-        <h2>Symptom Diagnostics</h2>
-        <p>Get inspection steps for issues like brake vibration, overheating, and rough running.</p>
-    </div>
-
-    <div class="card">
-        <h2>Future Voice Agent</h2>
-        <p>Later versions will connect Syllable AI for voice-powered diagnostics.</p>
-    </div>
+<section class="grid" aria-label="MechMate capabilities">
+    <article class="card feature-card"><span class="feature-number">01</span><h2>Vehicle profiles</h2><p>Keep year, make, model, mileage, and engine notes together before running a diagnostic session.</p></article>
+    <article class="card feature-card"><span class="feature-number">02</span><h2>OBD-II guidance</h2><p>Translate supported diagnostic trouble codes into possible causes, inspection steps, and tools.</p></article>
+    <article class="card feature-card"><span class="feature-number">03</span><h2>Symptom triage</h2><p>Describe what the vehicle is doing to get a practical starting point for inspection.</p></article>
+    <article class="card feature-card"><span class="feature-number">04</span><h2>Saved history</h2><p>Review past diagnostic sessions and the safety notes recorded with each result.</p></article>
 </section>
 {% endblock %}

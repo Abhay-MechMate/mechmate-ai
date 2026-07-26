@@ -1,67 +1,20 @@
 {% extends "base.html" %}
 
 {% block content %}
-<h1>Diagnostic History</h1>
-<p class="subtext">This page shows saved diagnostic sessions from the SQLite database.</p>
-
+<header class="page-heading"><p class="page-kicker">Workshop record</p><h1>Diagnostic history</h1><p class="subtext">Review the diagnostic sessions saved in the local SQLite database.</p></header>
 <section class="card">
-    {% if history %}
-        {% for item in history %}
-            <div class="list-item">
-                {% if item.year %}
-                    <strong>
-                        {{ item.year }} {{ item.make }} {{ item.model }}
-                    </strong>
-                    <p>{{ "{:,}".format(item.mileage) }} miles</p>
-                {% else %}
-                    <strong>No vehicle selected</strong>
-                {% endif %}
-
-                <p><strong>Input:</strong> {{ item.input_text }}</p>
-                <p><strong>Summary:</strong> {{ item.summary }}</p>
-                <p><strong>Severity:</strong> {{ item.severity }}</p>
-
-                <h3>Possible Causes</h3>
-                {% if item.causes %}
-                    <ul>
-                        {% for cause in item.causes %}
-                            <li>{{ cause }}</li>
-                        {% endfor %}
-                    </ul>
-                {% else %}
-                    <p>No causes saved.</p>
-                {% endif %}
-
-                <h3>Recommended Inspection</h3>
-                {% if item.inspection %}
-                    <ol>
-                        {% for step in item.inspection %}
-                            <li>{{ step }}</li>
-                        {% endfor %}
-                    </ol>
-                {% else %}
-                    <p>No inspection steps saved.</p>
-                {% endif %}
-
-                <h3>Suggested Parts or Tools</h3>
-                {% if item.parts %}
-                    <ul>
-                        {% for part in item.parts %}
-                            <li>{{ part }}</li>
-                        {% endfor %}
-                    </ul>
-                {% else %}
-                    <p>No parts or tools saved.</p>
-                {% endif %}
-
-                <h3>Safety Note</h3>
-                <p>{{ item.safety }}</p>
-
-                <p><strong>Date:</strong> {{ item.created_at }}</p>
-            </div>
-        {% endfor %}
-    {% else %}
-        <p>No diagnostic history yet.</p>
-    {% endif %}
+    <div class="section-heading"><div><p class="section-label">Session archive</p><h2>Recent assessments</h2></div>{% if history %}<span class="section-label">{{ history|length }} saved</span>{% endif %}</div>
+    {% if history %}{% for item in history %}
+    <article class="list-item history-item">
+        <div class="history-top"><div>{% if item.year %}<strong class="history-title">{{ item.year }} {{ item.make }} {{ item.model }}</strong><p class="history-meta">{{ "{:,}".format(item.mileage) }} miles{% if item.engine %} - {{ item.engine }}{% endif %}</p>{% else %}<strong class="history-title">No vehicle selected</strong>{% endif %}</div><span class="history-date">{{ item.created_at }}</span></div>
+        <p class="history-input"><strong>Input:</strong> {{ item.input_text }}</p><p class="history-summary">{{ item.summary }}</p><p><span class="severity">{{ item.severity }}</span></p>
+        <div class="history-details">
+            <div><h3>Possible causes</h3>{% if item.causes %}<ul>{% for cause in item.causes %}<li>{{ cause }}</li>{% endfor %}</ul>{% else %}<p class="muted">No causes saved.</p>{% endif %}</div>
+            <div><h3>Parts or tools</h3>{% if item.parts %}<ul>{% for part in item.parts %}<li>{{ part }}</li>{% endfor %}</ul>{% else %}<p class="muted">No parts or tools saved.</p>{% endif %}</div>
+            <div class="history-wide"><h3>Recommended inspection</h3>{% if item.inspection %}<ol>{% for step in item.inspection %}<li>{{ step }}</li>{% endfor %}</ol>{% else %}<p class="muted">No inspection steps saved.</p>{% endif %}</div>
+            <div class="history-wide"><h3>Safety note</h3><p class="safety-note">{{ item.safety }}</p></div>
+        </div>
+    </article>
+    {% endfor %}{% else %}<div class="empty-state">No diagnostic history yet. Run a diagnosis to create the first saved session.</div>{% endif %}
 </section>
 {% endblock %}

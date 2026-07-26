@@ -1,83 +1,21 @@
 {% extends "base.html" %}
 
 {% block content %}
-<h1>Vehicle Profiles</h1>
-<p class="subtext">Add vehicles that will be used for diagnostic sessions.</p>
-
-{% if message %}
-<div class="success">{{ message }}</div>
-{% endif %}
-
+<header class="page-heading"><p class="page-kicker">Garage</p><h1>Vehicle profiles</h1><p class="subtext">Add the vehicle details that will provide context for each diagnostic session.</p></header>
+{% if message %}<div class="success">{{ message }}</div>{% endif %}
 <section class="card">
-    <h2>Add Vehicle</h2>
+    <div class="section-heading"><div><p class="section-label">New profile</p><h2>Add a vehicle</h2></div></div>
     <form method="post" action="/vehicles" class="form-grid">
-    <div>
-        <label>Year</label>
-        <select name="year" id="vehicleYear" required>
-            <option value="">Select year</option>
-        </select>
-    </div>
-
-    <div>
-        <label>Make</label>
-        <select name="make" id="vehicleMake" required>
-            <option value="">Select make</option>
-            <option value="Toyota">Toyota</option>
-            <option value="Honda">Honda</option>
-            <option value="Subaru">Subaru</option>
-            <option value="Ford">Ford</option>
-            <option value="Chevrolet">Chevrolet</option>
-            <option value="GMC">GMC</option>
-            <option value="Jeep">Jeep</option>
-            <option value="Nissan">Nissan</option>
-            <option value="Hyundai">Hyundai</option>
-            <option value="Kia">Kia</option>
-            <option value="Mazda">Mazda</option>
-            <option value="BMW">BMW</option>
-            <option value="Mercedes-Benz">Mercedes-Benz</option>
-            <option value="Audi">Audi</option>
-            <option value="Lexus">Lexus</option>
-            <option value="Volkswagen">Volkswagen</option>
-            <option value="Other / Not Listed">Other / Not Listed</option>
-        </select>
-    </div>
-
-    <div>
-        <label>Model</label>
-        <select name="model" id="vehicleModel" required disabled>
-            <option value="">Select make first</option>
-        </select>
-    </div>
-
-    <div>
-        <label>Mileage</label>
-        <input type="number" name="mileage" placeholder="78000" required>
-    </div>
-
-    <div class="full">
-        <label>Engine / Notes</label>
-        <input type="text" name="engine" placeholder="2.4L FA24, 1.5T, V6, trim, known issues, etc.">
-    </div>
-
-    <button class="button full" type="submit">Save Vehicle</button>
-</form>
-    </section>
-
+        <div><label for="vehicleYear">Year</label><select name="year" id="vehicleYear" required><option value="">Select year</option></select></div>
+        <div><label for="vehicleMake">Make</label><select name="make" id="vehicleMake" required><option value="">Select make</option><option value="Toyota">Toyota</option><option value="Honda">Honda</option><option value="Subaru">Subaru</option><option value="Ford">Ford</option><option value="Chevrolet">Chevrolet</option><option value="GMC">GMC</option><option value="Jeep">Jeep</option><option value="Nissan">Nissan</option><option value="Hyundai">Hyundai</option><option value="Kia">Kia</option><option value="Mazda">Mazda</option><option value="BMW">BMW</option><option value="Mercedes-Benz">Mercedes-Benz</option><option value="Audi">Audi</option><option value="Lexus">Lexus</option><option value="Volkswagen">Volkswagen</option><option value="Other / Not Listed">Other / Not Listed</option></select></div>
+        <div><label for="vehicleModel">Model</label><select name="model" id="vehicleModel" required disabled><option value="">Select make first</option></select></div>
+        <div><label for="vehicleMileage">Mileage</label><input type="number" name="mileage" id="vehicleMileage" placeholder="78,000" required></div>
+        <div class="full"><label for="vehicleEngine">Engine / notes</label><input type="text" name="engine" id="vehicleEngine" placeholder="2.4L FA24, trim, known issues, or notes"></div>
+        <button class="button full" type="submit">Save vehicle profile</button>
+    </form>
+</section>
 <section class="card">
-    <h2>Saved Vehicles</h2>
-
-    {% if vehicles %}
-        {% for vehicle in vehicles %}
-            <div class="list-item">
-                <strong>{{ vehicle.year }} {{ vehicle.make }} {{ vehicle.model }}</strong>
-                <p>{{ "{:,}".format(vehicle.mileage) }} miles</p>
-                {% if vehicle.engine %}
-                    <p>Engine / Notes: {{ vehicle.engine }}</p>
-                {% endif %}
-            </div>
-        {% endfor %}
-    {% else %}
-        <p>No vehicles saved yet.</p>
-    {% endif %}
+    <div class="section-heading"><div><p class="section-label">Saved garage</p><h2>Your vehicles</h2></div>{% if vehicles %}<span class="section-label">{{ vehicles|length }} saved</span>{% endif %}</div>
+    {% if vehicles %}{% for vehicle in vehicles %}<article class="list-item"><strong class="vehicle-name">{{ vehicle.year }} {{ vehicle.make }} {{ vehicle.model }}</strong><p class="vehicle-meta">{{ "{:,}".format(vehicle.mileage) }} miles{% if vehicle.engine %} - {{ vehicle.engine }}{% endif %}</p></article>{% endfor %}{% else %}<div class="empty-state">No vehicles saved yet. Add one above to include its details in a diagnosis.</div>{% endif %}
 </section>
 {% endblock %}

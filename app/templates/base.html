@@ -2,27 +2,25 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>MechMate AI</title>
     <link rel="stylesheet" href="/static/styles.css">
 </head>
 <body>
     <header class="navbar">
-        <div class="logo">MechMate AI</div>
-        <nav>
-            <a href="/">Home</a>
+        <a class="brand" href="/" aria-label="MechMate AI home">
+            <span class="brand-mark">MM</span>
+            <span class="brand-copy"><span class="brand-name">MechMate AI</span><span class="brand-subtitle">Diagnostic dashboard</span></span>
+        </a>
+        <nav aria-label="Primary navigation">
+            <a href="/">Overview</a>
             <a href="/vehicles">Vehicles</a>
             <a href="/diagnose">Diagnose</a>
             <a href="/history">History</a>
         </nav>
     </header>
-
-    <main class="container">
-        {% block content %}{% endblock %}
-    </main>
-
-    <footer>
-        <p>MechMate AI Internship Prototype — Abhay Mahajan</p>
-    </footer>
+    <main class="container">{% block content %}{% endblock %}</main>
+    <footer><p>MechMate AI - Automotive diagnostic internship prototype</p></footer>
     <script src="/static/vehicle_dropdowns.js"></script>
 </body>
 </html>

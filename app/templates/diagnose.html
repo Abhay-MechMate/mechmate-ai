@@ -1,92 +1,27 @@
 {% extends "base.html" %}
 
 {% block content %}
-<h1>Diagnostic Assistant</h1>
-<p class="subtext">Enter an OBD-II code or describe a symptom.</p>
-
+<header class="page-heading"><p class="page-kicker">Diagnostic workspace</p><h1>Run a diagnosis</h1><p class="subtext">Enter an OBD-II code or describe a symptom to receive a structured first-pass inspection guide.</p></header>
 <section class="card">
-    <h2>Run Diagnosis</h2>
-
+    <div class="section-heading"><div><p class="section-label">New session</p><h2>Diagnostic input</h2></div></div>
     <form method="post" action="/diagnose" class="form-grid">
-        <div class="full">
-            <label>Select Vehicle</label>
-            <select name="vehicle_id">
-                {% if vehicles %}
-                    {% for vehicle in vehicles %}
-                        <option value="{{ vehicle.id }}">
-    				{{ vehicle.year }} {{ vehicle.make }} {{ vehicle.model }} — {{ "{:,}".format(vehicle.mileage) }} miles
-			</option>
-                    {% endfor %}
-                {% else %}
-                    <option value="0">No vehicle saved yet</option>
-                {% endif %}
-            </select>
-        </div>
-
-        <div>
-            <label>OBD-II Code</label>
-            <input type="text" name="obd_code" placeholder="P0301">
-        </div>
-
-        <div>
-            <label>Symptom</label>
-            <input type="text" name="symptom" placeholder="Car shakes while braking">
-        </div>
-
-        <button class="button full" type="submit">Run Diagnosis</button>
+        <div class="full"><label for="diagnosticVehicle">Vehicle context</label><select name="vehicle_id" id="diagnosticVehicle">{% if vehicles %}{% for vehicle in vehicles %}<option value="{{ vehicle.id }}">{{ vehicle.year }} {{ vehicle.make }} {{ vehicle.model }} - {{ "{:,}".format(vehicle.mileage) }} miles</option>{% endfor %}{% else %}<option value="0">No vehicle saved yet</option>{% endif %}</select></div>
+        <div><label for="obdCode">OBD-II code</label><input type="text" name="obd_code" id="obdCode" placeholder="P0301"></div>
+        <div><label for="symptom">Symptom</label><input type="text" name="symptom" id="symptom" placeholder="Car shakes while braking"></div>
+        <button class="button full" type="submit">Analyze vehicle concern</button>
     </form>
 </section>
-
 {% if result %}
 <section class="card result">
-    <h2>Diagnostic Result</h2>
-
-    {% if selected_vehicle %}
-        <p>
-            <strong>Vehicle:</strong>
-            {{ selected_vehicle.year }} {{ selected_vehicle.make }} {{ selected_vehicle.model }}
-        </p>
-    {% endif %}
-
-    <p><strong>Input:</strong> {{ input_text }}</p>
-    <p><strong>Summary:</strong> {{ result.summary }}</p>
-    <p><span class="severity">Severity: {{ result.severity }}</span></p>
-
-    <h3>Possible Causes</h3>
-    {% if result.causes %}
-        <ul>
-            {% for cause in result.causes %}
-                <li>{{ cause }}</li>
-            {% endfor %}
-        </ul>
-    {% else %}
-        <p>No causes listed.</p>
-    {% endif %}
-
-    <h3>Recommended Inspection</h3>
-    {% if result.inspection %}
-        <ol>
-            {% for step in result.inspection %}
-                <li>{{ step }}</li>
-            {% endfor %}
-        </ol>
-    {% else %}
-        <p>No inspection steps listed.</p>
-    {% endif %}
-
-    <h3>Suggested Parts or Tools</h3>
-    {% if result.parts %}
-        <ul>
-            {% for part in result.parts %}
-                <li>{{ part }}</li>
-            {% endfor %}
-        </ul>
-    {% else %}
-        <p>No parts or tools listed.</p>
-    {% endif %}
-
-    <h3>Safety Note</h3>
-    <p>{{ result.safety }}</p>
+    <div class="section-heading"><div><p class="section-label">Saved result</p><h2>Diagnostic assessment</h2></div><span class="severity">{{ result.severity }}</span></div>
+    {% if selected_vehicle %}<p class="vehicle-meta"><strong>Vehicle:</strong> {{ selected_vehicle.year }} {{ selected_vehicle.make }} {{ selected_vehicle.model }}</p>{% endif %}
+    <p class="vehicle-meta"><strong>Input:</strong> {{ input_text }}</p><p class="result-summary">{{ result.summary }}</p>
+    <div class="result-grid">
+        <div class="result-section"><h3>Possible causes</h3>{% if result.causes %}<ul>{% for cause in result.causes %}<li>{{ cause }}</li>{% endfor %}</ul>{% else %}<p class="muted">No causes listed.</p>{% endif %}</div>
+        <div class="result-section"><h3>Suggested parts or tools</h3>{% if result.parts %}<ul>{% for part in result.parts %}<li>{{ part }}</li>{% endfor %}</ul>{% else %}<p class="muted">No parts or tools listed.</p>{% endif %}</div>
+        <div class="result-section full-result"><h3>Recommended inspection</h3>{% if result.inspection %}<ol>{% for step in result.inspection %}<li>{{ step }}</li>{% endfor %}</ol>{% else %}<p class="muted">No inspection steps listed.</p>{% endif %}</div>
+        <div class="result-section full-result"><h3>Safety note</h3><p class="safety-note">{{ result.safety }}</p></div>
+    </div>
 </section>
 {% endif %}
 {% endblock %}
