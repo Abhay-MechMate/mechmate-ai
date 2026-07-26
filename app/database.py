@@ -53,6 +53,7 @@ def init_db():
                 causes TEXT DEFAULT '[]',
                 inspection TEXT DEFAULT '[]',
                 parts TEXT DEFAULT '[]',
+                parts_store_notes TEXT DEFAULT '[]',
                 safety TEXT DEFAULT '',
                 created_at TEXT DEFAULT CURRENT_TIMESTAMP,
                 FOREIGN KEY (vehicle_id) REFERENCES vehicles(id)
@@ -73,6 +74,7 @@ def init_db():
             "causes": "TEXT DEFAULT '[]'",
             "inspection": "TEXT DEFAULT '[]'",
             "parts": "TEXT DEFAULT '[]'",
+            "parts_store_notes": "TEXT DEFAULT '[]'",
             "safety": "TEXT DEFAULT ''",
         }
 
@@ -181,6 +183,7 @@ def add_diagnostic_session(
     causes: list[str],
     inspection: list[str],
     parts: list[str],
+    parts_store_notes: list[str],
     safety: str,
 ):
     with get_connection() as connection:
@@ -194,9 +197,10 @@ def add_diagnostic_session(
                 causes,
                 inspection,
                 parts,
+                parts_store_notes,
                 safety
             )
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
             """,
             (
                 vehicle_id,
@@ -206,6 +210,7 @@ def add_diagnostic_session(
                 json.dumps(causes),
                 json.dumps(inspection),
                 json.dumps(parts),
+                json.dumps(parts_store_notes),
                 safety,
             ),
         )
@@ -227,6 +232,7 @@ def get_diagnostic_history():
                 diagnostic_sessions.causes,
                 diagnostic_sessions.inspection,
                 diagnostic_sessions.parts,
+                diagnostic_sessions.parts_store_notes,
                 diagnostic_sessions.safety,
                 diagnostic_sessions.created_at,
                 vehicles.year,
@@ -249,6 +255,7 @@ def get_diagnostic_history():
             item["causes"] = json.loads(item["causes"] or "[]")
             item["inspection"] = json.loads(item["inspection"] or "[]")
             item["parts"] = json.loads(item["parts"] or "[]")
+            item["parts_store_notes"] = json.loads(item["parts_store_notes"] or "[]")
 
             history.append(item)
 

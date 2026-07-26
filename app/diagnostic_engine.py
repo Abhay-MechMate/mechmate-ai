@@ -207,6 +207,32 @@ def format_vehicle_context(vehicle: dict | None):
     return f"{year} {make} {model}, {mileage:,} miles, {engine}"
 
 
+def build_parts_store_notes(vehicle: dict | None, parts: list[str]) -> list[str]:
+    if vehicle:
+        fitment_note = (
+            f"Verify fitment by year, make, model, mileage, and engine before buying "
+            f"anything for {format_vehicle_context(vehicle)}."
+        )
+    else:
+        fitment_note = (
+            "Verify fitment by year, make, model, mileage, and engine before buying "
+            "any replacement part."
+        )
+
+    part_categories = ", ".join(parts[:3]) if parts else "the recommended part or tool category"
+
+    return [
+        "Inspect and confirm the root cause first; do not buy parts blindly based on one code or symptom.",
+        fitment_note,
+        f"At the parts store, ask for the matching part or tool category, such as {part_categories}.",
+    ]
+
+
+def add_parts_store_notes(result: dict, vehicle: dict | None) -> dict:
+    result["parts_store_notes"] = build_parts_store_notes(vehicle, result.get("parts", []))
+    return result
+
+
 def run_diagnostic(
     obd_code: str = "",
     symptom: str = "",
@@ -220,16 +246,16 @@ def run_diagnostic(
     if obd_code and obd_code in OBD_DATABASE:
         result = OBD_DATABASE[obd_code].copy()
         result["summary"] = f"{result['summary']} Vehicle context: {vehicle_context}."
-        return result, obd_code
+        return add_parts_store_notes(result, vehicle), obd_code
 
     if obd_code and obd_code not in OBD_DATABASE:
         result = unknown_code_diagnosis(obd_code)
         result["summary"] = f"{result['summary']} Vehicle context: {vehicle_context}."
-        return result, obd_code
+        return add_parts_store_notes(result, vehicle), obd_code
 
     if symptom:
         result = diagnose_symptom(symptom)
         result["summary"] = f"{result['summary']} Vehicle context: {vehicle_context}."
-        return result, symptom
+        return add_parts_store_notes(result, vehicle), symptom
 
-    return empty_diagnosis(), "No input"
+    return add_parts_store_notes(empty_diagnosis(), vehicle), "No input"

@@ -12,6 +12,7 @@
             <div><h3>Possible causes</h3>{% if item.causes %}<ul>{% for cause in item.causes %}<li>{{ cause }}</li>{% endfor %}</ul>{% else %}<p class="muted">No causes saved.</p>{% endif %}</div>
             <div><h3>Parts or tools</h3>{% if item.parts %}<ul>{% for part in item.parts %}<li>{{ part }}</li>{% endfor %}</ul>{% else %}<p class="muted">No parts or tools saved.</p>{% endif %}</div>
             <div class="history-wide"><h3>Recommended inspection</h3>{% if item.inspection %}<ol>{% for step in item.inspection %}<li>{{ step }}</li>{% endfor %}</ol>{% else %}<p class="muted">No inspection steps saved.</p>{% endif %}</div>
+            <div class="history-wide"><h3>Parts store guidance</h3>{% if item.parts_store_notes %}<ul>{% for note in item.parts_store_notes %}<li>{{ note }}</li>{% endfor %}</ul>{% else %}<p class="muted">No parts-store guidance saved.</p>{% endif %}</div>
             <div class="history-wide"><h3>Safety note</h3><p class="safety-note">{{ item.safety }}</p></div>
         </div>
     </article>

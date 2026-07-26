@@ -2,6 +2,7 @@ from fastapi import FastAPI, Form, Request
 from fastapi.responses import HTMLResponse, RedirectResponse
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
+from pydantic import BaseModel
 
 from app.auth import (
     SESSION_COOKIE_NAME,
@@ -34,6 +35,16 @@ templates = Jinja2Templates(directory="app/templates")
 init_db()
 
 
+class VoiceDiagnosticRequest(BaseModel):
+    year: int | None = None
+    make: str | None = None
+    model: str | None = None
+    mileage: int | None = None
+    engine: str | None = None
+    obd_code: str | None = None
+    symptom: str | None = None
+
+
 def get_current_user(request: Request):
     user_id = get_session_user_id(request.cookies.get(SESSION_COOKIE_NAME))
     return get_user_by_id(user_id) if user_id else None
@@ -57,6 +68,43 @@ def redirect_with_session(path: str, user_id: int):
         samesite="lax",
     )
     return response
+
+
+def build_voice_vehicle(request_data: VoiceDiagnosticRequest):
+    vehicle_values = [
+        request_data.year,
+        request_data.make,
+        request_data.model,
+        request_data.mileage,
+        request_data.engine,
+    ]
+
+    if not any(value not in (None, "") for value in vehicle_values):
+        return None
+
+    return {
+        "year": request_data.year if request_data.year is not None else "not provided",
+        "make": request_data.make or "not provided",
+        "model": request_data.model or "not provided",
+        "mileage": request_data.mileage if request_data.mileage is not None else 0,
+        "engine": request_data.engine or "not provided",
+    }
+
+
+def build_spoken_response(result: dict) -> str:
+    response_parts = [result["summary"]]
+    causes = result.get("causes", [])[:2]
+    inspection = result.get("inspection", [])
+    safety = result.get("safety")
+
+    if causes:
+        response_parts.append(f"Likely causes include {' and '.join(causes)}.")
+    if inspection:
+        response_parts.append(f"First, {inspection[0]}")
+    if safety:
+        response_parts.append(f"Safety note: {safety}")
+
+    return " ".join(response_parts)
 
 
 @app.get("/", response_class=HTMLResponse)
@@ -159,6 +207,7 @@ def run_diagnosis(
         causes=result["causes"],
         inspection=result["inspection"],
         parts=result["parts"],
+        parts_store_notes=result["parts_store_notes"],
         safety=result["safety"],
     )
 
@@ -177,3 +226,24 @@ def run_diagnosis(
 @app.get("/history", response_class=HTMLResponse)
 def history_page(request: Request):
     return render_template(request, "history.html", {"history": get_diagnostic_history()})
+
+
+@app.post("/api/voice/diagnose")
+def voice_diagnose(request_data: VoiceDiagnosticRequest):
+    vehicle = build_voice_vehicle(request_data)
+    result, _ = run_diagnostic(
+        obd_code=request_data.obd_code or "",
+        symptom=request_data.symptom or "",
+        vehicle=vehicle,
+    )
+
+    return {
+        "spoken_response": build_spoken_response(result),
+        "summary": result["summary"],
+        "severity": result["severity"],
+        "causes": result["causes"],
+        "inspection": result["inspection"],
+        "parts": result["parts"],
+        "parts_store_notes": result["parts_store_notes"],
+        "safety": result["safety"],
+    }

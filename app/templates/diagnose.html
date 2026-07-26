@@ -20,6 +20,7 @@
         <div class="result-section"><h3>Possible causes</h3>{% if result.causes %}<ul>{% for cause in result.causes %}<li>{{ cause }}</li>{% endfor %}</ul>{% else %}<p class="muted">No causes listed.</p>{% endif %}</div>
         <div class="result-section"><h3>Suggested parts or tools</h3>{% if result.parts %}<ul>{% for part in result.parts %}<li>{{ part }}</li>{% endfor %}</ul>{% else %}<p class="muted">No parts or tools listed.</p>{% endif %}</div>
         <div class="result-section full-result"><h3>Recommended inspection</h3>{% if result.inspection %}<ol>{% for step in result.inspection %}<li>{{ step }}</li>{% endfor %}</ol>{% else %}<p class="muted">No inspection steps listed.</p>{% endif %}</div>
+        <div class="result-section full-result"><h3>Parts store guidance</h3>{% if result.parts_store_notes %}<ul>{% for note in result.parts_store_notes %}<li>{{ note }}</li>{% endfor %}</ul>{% else %}<p class="muted">No parts-store guidance listed.</p>{% endif %}</div>
         <div class="result-section full-result"><h3>Safety note</h3><p class="safety-note">{{ result.safety }}</p></div>
     </div>
 </section>
