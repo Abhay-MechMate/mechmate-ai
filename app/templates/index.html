@@ -4,9 +4,15 @@
 <section class="hero">
     <div class="hero-copy">
         <p class="eyebrow">Automotive diagnostic intelligence</p>
-        <h1>Know what your vehicle is telling you.</h1>
-        <p class="hero-text">Build a vehicle profile, interpret OBD-II codes, and follow a clear first-pass inspection path from one local dashboard.</p>
-        <div class="button-row"><a class="button" href="/diagnose">Start a diagnosis</a><a class="button secondary" href="/vehicles">Manage vehicles</a></div>
+        {% if current_user %}
+            <h1>Welcome back to your diagnostic workspace.</h1>
+            <p class="hero-text">Build a vehicle profile, interpret OBD-II codes, and follow a clear first-pass inspection path from one local dashboard.</p>
+            <div class="button-row"><a class="button" href="/diagnose">Start a diagnosis</a><a class="button secondary" href="/vehicles">Manage vehicles</a></div>
+        {% else %}
+            <h1>Know what your vehicle is telling you.</h1>
+            <p class="hero-text">Create a local account to get started with vehicle profiles, OBD-II guidance, and saved diagnostic sessions.</p>
+            <div class="button-row"><a class="button" href="/signup">Create an account</a><a class="button secondary" href="/login">Log in</a></div>
+        {% endif %}
     </div>
     <aside class="hero-panel" aria-label="System status"><p class="hero-panel-label">System status</p><p class="hero-panel-value">Local diagnostic workspace</p><p class="hero-panel-status"><span class="status-dot"></span>Ready for input</p></aside>
 </section>

@@ -17,6 +17,13 @@
             <a href="/vehicles">Vehicles</a>
             <a href="/diagnose">Diagnose</a>
             <a href="/history">History</a>
+            {% if current_user %}
+                <span class="nav-user">{{ current_user.email }}</span>
+                <a href="/logout">Logout</a>
+            {% else %}
+                <a href="/login">Login</a>
+                <a class="nav-signup" href="/signup">Sign up</a>
+            {% endif %}
         </nav>
     </header>
     <main class="container">{% block content %}{% endblock %}</main>

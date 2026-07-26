@@ -1,0 +1,23 @@
+{% extends "base.html" %}
+
+{% block content %}
+<section class="auth-shell">
+    <div class="auth-intro">
+        <p class="page-kicker">Local account</p>
+        <h1>Set up your workspace.</h1>
+        <p class="subtext">Create a local MechMate AI account. Passwords are stored as secure hashes, not plaintext.</p>
+    </div>
+    <section class="card auth-card">
+        <p class="section-label">Create account</p>
+        <h2>Sign up</h2>
+        {% if error %}<div class="form-error">{{ error }}</div>{% endif %}
+        <form method="post" action="/signup" class="auth-form">
+            <div><label for="email">Email address</label><input type="email" name="email" id="email" value="{{ email or '' }}" autocomplete="email" required></div>
+            <div><label for="password">Password</label><input type="password" name="password" id="password" autocomplete="new-password" minlength="8" required></div>
+            <div><label for="confirmPassword">Confirm password</label><input type="password" name="confirm_password" id="confirmPassword" autocomplete="new-password" minlength="8" required></div>
+            <button class="button" type="submit">Create local account</button>
+        </form>
+        <p class="auth-switch">Already have an account? <a href="/login">Log in</a>.</p>
+    </section>
+</section>
+{% endblock %}

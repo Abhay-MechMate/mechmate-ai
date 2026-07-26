@@ -35,6 +35,8 @@ a { color: inherit; }
 nav { display: flex; flex-wrap: wrap; gap: 4px; }
 nav a { padding: 8px 11px; border: 1px solid transparent; border-radius: 8px; color: var(--muted); font-size: 0.9rem; font-weight: 650; text-decoration: none; transition: 160ms ease; }
 nav a:hover { border-color: var(--border); background: var(--blue-soft); color: var(--text); }
+.nav-user { align-self: center; max-width: 180px; overflow: hidden; color: var(--muted); font-size: 0.78rem; font-weight: 650; text-overflow: ellipsis; white-space: nowrap; }
+.nav-signup { border-color: rgba(56, 165, 255, 0.46); background: var(--blue-soft); color: #dff1ff; }
 .container { width: min(1120px, 90%); margin: 0 auto; padding: 48px 0 64px; }
 .page-heading { max-width: 720px; margin: 0 0 28px; }
 .page-kicker, .eyebrow { margin: 0 0 9px; color: var(--blue); font-size: 0.72rem; font-weight: 800; letter-spacing: 0.14em; text-transform: uppercase; }
@@ -83,6 +85,14 @@ select:disabled { cursor: not-allowed; opacity: 0.58; }
 .vehicle-name, .history-title { display: block; color: #f1f7ff; font-size: 1.02rem; }
 .vehicle-meta, .history-meta { margin: 5px 0 0; color: var(--muted); font-size: 0.9rem; }
 .empty-state { padding: 24px; border: 1px dashed var(--border-strong); border-radius: 12px; background: rgba(7, 17, 31, 0.28); color: var(--muted); text-align: center; }
+.auth-shell { display: grid; grid-template-columns: minmax(0, 0.9fr) minmax(340px, 0.7fr); gap: 46px; align-items: center; min-height: calc(100vh - 240px); }
+.auth-intro { max-width: 520px; }
+.auth-intro h1 { margin-bottom: 16px; font-size: clamp(2.5rem, 5vw, 4.25rem); }
+.auth-card { width: 100%; max-width: 460px; justify-self: end; margin-bottom: 0; }
+.auth-form { display: grid; gap: 18px; margin-top: 22px; }
+.form-error { margin-top: 18px; padding: 12px 14px; border: 1px solid rgba(255, 123, 129, 0.45); border-radius: 9px; background: rgba(177, 50, 58, 0.16); color: #ffc4c7; font-size: 0.9rem; }
+.auth-switch { margin: 20px 0 0; color: var(--muted); font-size: 0.9rem; }
+.auth-switch a { color: var(--blue); font-weight: 700; }
 .result { border-color: rgba(56, 165, 255, 0.46); }
 .result-summary { margin: 18px 0 0; padding: 15px; border-left: 3px solid var(--blue); border-radius: 0 8px 8px 0; background: rgba(56, 165, 255, 0.08); color: #d9eaff; }
 .result-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 22px; margin-top: 24px; }
@@ -101,5 +111,5 @@ select:disabled { cursor: not-allowed; opacity: 0.58; }
 .history-details .history-wide { grid-column: 1 / -1; }
 footer { padding: 25px max(5vw, 24px) 32px; border-top: 1px solid rgba(52, 81, 113, 0.55); color: #7890aa; font-size: 0.84rem; text-align: center; }
 footer p { margin: 0; }
-@media (max-width: 760px) { .navbar { align-items: flex-start; flex-direction: column; gap: 13px; } nav { width: 100%; justify-content: space-between; } nav a { padding: 7px 5px; font-size: 0.82rem; } .container { width: min(92%, 620px); padding-top: 32px; } .hero { grid-template-columns: 1fr; min-height: 0; padding: 32px 26px; } .hero-panel { max-width: 320px; } .grid, .form-grid, .result-grid, .history-details { grid-template-columns: 1fr; } .card { padding: 21px; } .result-section.full-result, .history-details .history-wide { grid-column: auto; } }
+@media (max-width: 760px) { .navbar { align-items: flex-start; flex-direction: column; gap: 13px; } nav { width: 100%; justify-content: space-between; } nav a { padding: 7px 5px; font-size: 0.82rem; } .nav-user { max-width: 120px; } .container { width: min(92%, 620px); padding-top: 32px; } .hero { grid-template-columns: 1fr; min-height: 0; padding: 32px 26px; } .hero-panel { max-width: 320px; } .grid, .form-grid, .result-grid, .history-details, .auth-shell { grid-template-columns: 1fr; } .auth-shell { min-height: 0; gap: 24px; } .auth-card { justify-self: stretch; max-width: none; } .card { padding: 21px; } .result-section.full-result, .history-details .history-wide { grid-column: auto; } }
 @media (max-width: 440px) { .brand-subtitle { display: none; } .button-row { display: grid; grid-template-columns: 1fr; } .button { width: 100%; } .history-top { flex-direction: column; gap: 6px; } }

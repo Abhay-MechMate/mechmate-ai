@@ -19,6 +19,17 @@ def init_db():
     with get_connection() as connection:
         connection.execute(
             """
+            CREATE TABLE IF NOT EXISTS users (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                email TEXT NOT NULL UNIQUE COLLATE NOCASE,
+                password_hash TEXT NOT NULL,
+                created_at TEXT DEFAULT CURRENT_TIMESTAMP
+            )
+            """
+        )
+
+        connection.execute(
+            """
             CREATE TABLE IF NOT EXISTS vehicles (
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
                 year INTEGER NOT NULL,
@@ -72,6 +83,50 @@ def init_db():
                 )
 
         connection.commit()
+
+
+def add_user(email: str, password_hash: str):
+    try:
+        with get_connection() as connection:
+            cursor = connection.execute(
+                """
+                INSERT INTO users (email, password_hash)
+                VALUES (?, ?)
+                """,
+                (email, password_hash),
+            )
+            connection.commit()
+            return cursor.lastrowid
+    except sqlite3.IntegrityError:
+        return None
+
+
+def get_user_by_email(email: str):
+    with get_connection() as connection:
+        row = connection.execute(
+            """
+            SELECT id, email, password_hash, created_at
+            FROM users
+            WHERE email = ?
+            """,
+            (email,),
+        ).fetchone()
+
+        return dict(row) if row else None
+
+
+def get_user_by_id(user_id: int):
+    with get_connection() as connection:
+        row = connection.execute(
+            """
+            SELECT id, email, created_at
+            FROM users
+            WHERE id = ?
+            """,
+            (user_id,),
+        ).fetchone()
+
+        return dict(row) if row else None
 
 
 def add_vehicle(year: int, make: str, model: str, mileage: int, engine: str = ""):
