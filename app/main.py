@@ -1,4 +1,7 @@
-from fastapi import FastAPI, Form, Request
+import hmac
+import os
+
+from fastapi import FastAPI, Form, Header, HTTPException, Request
 from fastapi.responses import HTMLResponse, RedirectResponse
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
@@ -105,6 +108,15 @@ def build_spoken_response(result: dict) -> str:
         response_parts.append(f"Safety note: {safety}")
 
     return " ".join(response_parts)
+
+
+def is_voice_request_authorized(provided_key: str | None) -> bool:
+    configured_key = os.getenv("VOICE_TOOL_API_KEY")
+
+    if not configured_key:
+        return True
+
+    return bool(provided_key) and hmac.compare_digest(provided_key, configured_key)
 
 
 @app.get("/", response_class=HTMLResponse)
@@ -229,7 +241,13 @@ def history_page(request: Request):
 
 
 @app.post("/api/voice/diagnose")
-def voice_diagnose(request_data: VoiceDiagnosticRequest):
+def voice_diagnose(
+    request_data: VoiceDiagnosticRequest,
+    x_mechmate_voice_key: str | None = Header(default=None),
+):
+    if not is_voice_request_authorized(x_mechmate_voice_key):
+        raise HTTPException(status_code=401, detail="Unauthorized voice tool request.")
+
     vehicle = build_voice_vehicle(request_data)
     result, _ = run_diagnostic(
         obd_code=request_data.obd_code or "",

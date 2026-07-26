@@ -1,76 +1,59 @@
-\# MechMate AI
+# MechMate AI
 
+MechMate AI is a self-hosted FastAPI automotive diagnostic internship project.
+It lets users save vehicle profiles, interpret a small mock OBD-II library,
+record diagnostic sessions, review parts-store guidance, and expose the same
+diagnostic flow through a voice-tool API.
 
+## Current Stack
 
-MechMate AI is a self-hosted automotive diagnostic website being built as part of a summer internship project.
+- Python 3.12, FastAPI, and Jinja2
+- SQLite at `data/mechmate.db`
+- HTML, CSS, and JavaScript
+- Docker Compose for future homelab deployment
 
+## Run Locally
 
+From the repository root:
 
-The goal is to help users save vehicle profiles, interpret OBD-II codes, receive symptom-based diagnostic guidance, and eventually interact with the system through a voice assistant.
+```powershell
+.\.venv\Scripts\Activate.ps1
+pip install -r requirements.txt
+uvicorn app.main:app --reload
+```
 
+Open `http://127.0.0.1:8000`. The API documentation is available at
+`http://127.0.0.1:8000/docs`.
 
+## Run with Docker Compose
 
-\## Current Version
+Install Docker Desktop or Docker Engine with the Compose plugin, then run from
+the repository root:
 
+```powershell
+docker compose up -d --build
+```
 
+Open `http://127.0.0.1:8000`. Compose mounts the local `data/` directory at
+`/app/data` in the container, so `data/mechmate.db` survives container restarts
+and image rebuilds.
 
-Version 0.1 Local Prototype
+Stop the service:
 
+```powershell
+docker compose down
+```
 
+View service logs:
 
-\## Current Features
+```powershell
+docker compose logs -f
+```
 
+## Notes
 
-
-\- FastAPI-powered website
-
-\- Home page
-
-\- Vehicle profile page
-
-\- Diagnostic assistant page
-
-\- Diagnostic history page
-
-\- Basic mock OBD-II code interpretation
-
-\- Basic symptom-based diagnostic logic
-
-
-
-\## Current Limitations
-
-
-
-\- Vehicle data is stored temporarily in server memory
-
-\- Data disappears when the server restarts
-
-\- No user accounts yet
-
-\- No database yet
-
-\- No OpenAI integration yet
-
-\- No voice-agent integration yet
-
-
-
-\## Planned Features
-
-
-
-\- Persistent database storage
-
-\- More OBD-II codes
-
-\- Better symptom diagnostic library
-
-\- Dropdown menus for vehicle selection and cleaner UI
-
-\- OpenAI-powered diagnostic assistant
-
-\- Syllable AI voice-agent support
-
-\- Homelab deployment with Docker
-
+- `data/` and real `.env` files are ignored by Git.
+- The current diagnostic engine is rule-based and remains the active source of
+  results.
+- Future OpenAI, Syllable AI, and public homelab deployment work should keep
+  API keys in environment variables and out of browser code.
