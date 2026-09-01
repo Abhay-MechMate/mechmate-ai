@@ -24,7 +24,9 @@ from app.database import (
     get_diagnostic_history,
     get_customer_case,
     get_customer_cases,
+    get_dashboard_stats,
     get_knowledge_items,
+    get_recent_dashboard_items,
     get_store_options,
     get_user_by_email,
     get_user_by_id,
@@ -34,7 +36,7 @@ from app.database import (
     search_knowledge_items,
     update_customer_case_follow_up_status,
 )
-from app.ai_client import generate_ai_diagnosis
+from app.ai_client import generate_ai_diagnosis, is_ai_diagnostics_enabled
 from app.diagnostic_engine import run_diagnostic
 
 
@@ -50,6 +52,17 @@ FOLLOW_UP_STATUSES = [
     "contacted",
     "resolved",
 ]
+
+DEMO_VEHICLE = {
+    "year": 2021,
+    "make": "Honda",
+    "model": "Civic",
+    "mileage": 48500,
+    "engine": "2.0L I4",
+}
+DEMO_DIAGNOSTIC_INPUT = "Demo data: P0301 cylinder one misfire"
+DEMO_CUSTOMER_NAME = "Demo Customer"
+DEMO_CASE_COMPLAINT = "Rough idle with OBD-II code P0301"
 
 # Create database tables when the website starts.
 init_db()
@@ -249,9 +262,92 @@ def build_follow_up_drafts(customer_case: dict) -> dict[str, str]:
     }
 
 
+def seed_demo_data_for_user(user_id: int) -> None:
+    """Create one local diagnostic workflow sample for a user, without duplicates."""
+    init_db()
+    vehicles = get_vehicles(user_id)
+    demo_vehicle = next(
+        (
+            vehicle
+            for vehicle in vehicles
+            if all(vehicle.get(field) == value for field, value in DEMO_VEHICLE.items())
+        ),
+        None,
+    )
+    if not demo_vehicle:
+        vehicle_id = add_vehicle(user_id=user_id, **DEMO_VEHICLE)
+        demo_vehicle = get_vehicle(vehicle_id, user_id)
+
+    result, _ = run_diagnostic(
+        obd_code="P0301",
+        symptom="",
+        vehicle=demo_vehicle,
+    )
+    history = get_diagnostic_history(user_id)
+    if not any(item["input_text"] == DEMO_DIAGNOSTIC_INPUT for item in history):
+        add_diagnostic_session(
+            user_id=user_id,
+            vehicle_id=demo_vehicle["id"],
+            input_text=DEMO_DIAGNOSTIC_INPUT,
+            summary=result["summary"],
+            severity=result["severity"],
+            causes=result["causes"],
+            inspection=result["inspection"],
+            parts=result["parts"],
+            parts_store_notes=result["parts_store_notes"],
+            safety=result["safety"],
+        )
+
+    cases = get_customer_cases(user_id)
+    if not any(
+        customer_case["customer_name"] == DEMO_CUSTOMER_NAME
+        and customer_case["complaint"] == DEMO_CASE_COMPLAINT
+        for customer_case in cases
+    ):
+        suggested_parts, suggested_tools = split_case_parts_and_tools(result["parts"])
+        add_customer_case(
+            user_id=user_id,
+            vehicle_id=demo_vehicle["id"],
+            customer_name=DEMO_CUSTOMER_NAME,
+            customer_email="demo.customer@example.com",
+            customer_phone="555-0101",
+            complaint=DEMO_CASE_COMPLAINT,
+            diagnosis_summary=result["summary"],
+            severity=result["severity"],
+            suggested_parts=suggested_parts,
+            suggested_tools=suggested_tools,
+            store_guidance=result["parts_store_notes"],
+            follow_up_channel="phone",
+            follow_up_status="ready for follow-up",
+        )
+
+
 @app.get("/", response_class=HTMLResponse)
-def home(request: Request):
-    return render_template(request, "index.html")
+def home(request: Request, demo: str = ""):
+    current_user = get_current_user(request)
+    if not current_user:
+        return render_template(request, "index.html")
+
+    return render_template(
+        request,
+        "index.html",
+        {
+            "dashboard_stats": get_dashboard_stats(current_user["id"]),
+            "recent_items": get_recent_dashboard_items(current_user["id"]),
+            "ai_diagnostics_enabled": is_ai_diagnostics_enabled(),
+            "message": "Demo data loaded for this account." if demo == "loaded" else "",
+        },
+    )
+
+
+@app.post("/demo/seed")
+def seed_demo_data(request: Request):
+    current_user = get_current_user(request)
+    if not current_user:
+        return redirect_to_login()
+
+    seed_demo_data_for_user(current_user["id"])
+    return RedirectResponse("/?demo=loaded", status_code=303)
 
 
 @app.get("/signup", response_class=HTMLResponse)

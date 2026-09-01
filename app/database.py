@@ -875,3 +875,34 @@ def get_diagnostic_history(user_id: int) -> list[dict]:
             history.append(item)
 
         return history
+
+
+def get_dashboard_stats(user_id: int) -> dict:
+    """Return account-scoped workflow counts and shared catalog counts."""
+    with get_connection() as connection:
+        row = connection.execute(
+            """
+            SELECT
+                (SELECT COUNT(*) FROM vehicles WHERE user_id = ?) AS total_vehicles,
+                (SELECT COUNT(*) FROM diagnostic_sessions WHERE user_id = ?) AS total_diagnostic_sessions,
+                (SELECT COUNT(*) FROM customer_cases WHERE user_id = ?) AS total_customer_cases,
+                (
+                    SELECT COUNT(*)
+                    FROM customer_cases
+                    WHERE user_id = ? AND follow_up_status = 'ready for follow-up'
+                ) AS cases_ready_for_follow_up,
+                (SELECT COUNT(*) FROM diagnostic_knowledge) AS total_knowledge_items,
+                (SELECT COUNT(*) FROM store_options) AS total_store_options
+            """,
+            (user_id, user_id, user_id, user_id),
+        ).fetchone()
+        return dict(row)
+
+
+def get_recent_dashboard_items(user_id: int) -> dict[str, list[dict]]:
+    """Return a compact, account-scoped set of items for the dashboard."""
+    return {
+        "vehicles": get_vehicles(user_id)[:3],
+        "diagnostic_sessions": get_diagnostic_history(user_id)[:3],
+        "customer_cases": get_customer_cases(user_id)[:3],
+    }

@@ -1,25 +1,68 @@
 {% extends "base.html" %}
 
 {% block content %}
-<section class="hero">
-    <div class="hero-copy">
-        <p class="eyebrow">Automotive diagnostic intelligence</p>
-        {% if current_user %}
-            <h1>Welcome back to your diagnostic workspace.</h1>
-            <p class="hero-text">Build a vehicle profile, interpret OBD-II codes, and follow a clear first-pass inspection path from one local dashboard.</p>
-            <div class="button-row"><a class="button" href="/diagnose">Start a diagnosis</a><a class="button secondary" href="/vehicles">Manage vehicles</a></div>
-        {% else %}
+{% if current_user %}
+    {% if message %}<div class="success">{{ message }}</div>{% endif %}
+    <section class="hero dashboard-hero">
+        <div class="hero-copy">
+            <p class="eyebrow">MVP demonstration dashboard</p>
+            <h1>Your MechMate AI workspace.</h1>
+            <p class="hero-text">Demonstrate the local workflow from vehicle profile and customer concern through diagnostic guidance, parts/store planning, saved cases, and future follow-up readiness.</p>
+            <div class="button-row"><a class="button" href="/diagnose">Run diagnosis</a><a class="button secondary" href="/cases/new">New customer case</a></div>
+        </div>
+        <aside class="hero-panel" aria-label="Dashboard overview"><p class="hero-panel-label">Local MVP</p><p class="hero-panel-value">Ready to demonstrate</p><p class="hero-panel-status"><span class="status-dot"></span>Account-scoped workspace</p></aside>
+    </section>
+
+    <section class="dashboard-section" aria-labelledby="dashboard-stats-heading">
+        <div class="section-heading"><div><p class="section-label">Your workspace</p><h2 id="dashboard-stats-heading">MVP overview</h2></div></div>
+        <div class="dashboard-stats">
+            <article class="card stat-card"><span class="section-label">Vehicles</span><strong>{{ dashboard_stats.total_vehicles }}</strong><p>Saved vehicle profiles</p></article>
+            <article class="card stat-card"><span class="section-label">History</span><strong>{{ dashboard_stats.total_diagnostic_sessions }}</strong><p>Diagnostic sessions</p></article>
+            <article class="card stat-card"><span class="section-label">Cases</span><strong>{{ dashboard_stats.total_customer_cases }}</strong><p>Customer cases</p></article>
+            <article class="card stat-card"><span class="section-label">Follow-up</span><strong>{{ dashboard_stats.cases_ready_for_follow_up }}</strong><p>Cases ready for follow-up</p></article>
+            <article class="card stat-card"><span class="section-label">Knowledge</span><strong>{{ dashboard_stats.total_knowledge_items }}</strong><p>Knowledge-base entries</p></article>
+            <article class="card stat-card"><span class="section-label">Stores</span><strong>{{ dashboard_stats.total_store_options }}</strong><p>Store options</p></article>
+        </div>
+    </section>
+
+    <section class="card dashboard-actions" aria-labelledby="quick-actions-heading">
+        <div class="section-heading"><div><p class="section-label">Workflow shortcuts</p><h2 id="quick-actions-heading">Quick actions</h2></div></div>
+        <div class="button-row"><a class="button" href="/vehicles">Add vehicle</a><a class="button" href="/diagnose">Run diagnosis</a><a class="button" href="/cases/new">New customer case</a><a class="button secondary" href="/knowledge-base">View knowledge base</a><a class="button secondary" href="/store-comparison">View store comparison</a><a class="button secondary" href="/docs">View API docs</a></div>
+        <form method="post" action="/demo/seed" class="demo-seed-form"><button class="button secondary" type="submit">Load demo data</button><p class="muted">Demo data is local and only used for this prototype.</p></form>
+    </section>
+
+    <section class="dashboard-columns" aria-label="Recent dashboard items">
+        <article class="card"><div class="section-heading"><div><p class="section-label">Garage</p><h2>Recent vehicles</h2></div><a href="/vehicles">View all</a></div>{% if recent_items.vehicles %}{% for vehicle in recent_items.vehicles %}<div class="list-item"><strong class="vehicle-name">{{ vehicle.year }} {{ vehicle.make }} {{ vehicle.model }}</strong><p class="vehicle-meta">{{ "{:,}".format(vehicle.mileage) }} miles{% if vehicle.engine %} · {{ vehicle.engine }}{% endif %}</p></div>{% endfor %}{% else %}<div class="empty-state">No vehicles yet. Add one or load the local demo data.</div>{% endif %}</article>
+        <article class="card"><div class="section-heading"><div><p class="section-label">History</p><h2>Recent diagnostics</h2></div><a href="/history">View all</a></div>{% if recent_items.diagnostic_sessions %}{% for item in recent_items.diagnostic_sessions %}<div class="list-item"><strong class="history-title">{{ item.input_text }}</strong><p class="history-summary">{{ item.summary }}</p><p class="vehicle-meta"><span class="severity">{{ item.severity }}</span></p></div>{% endfor %}{% else %}<div class="empty-state">No diagnostic sessions yet. Run a diagnosis or load the local demo data.</div>{% endif %}</article>
+        <article class="card"><div class="section-heading"><div><p class="section-label">Cases</p><h2>Recent customer cases</h2></div><a href="/cases">View all</a></div>{% if recent_items.customer_cases %}{% for customer_case in recent_items.customer_cases %}<div class="list-item"><strong class="history-title">{{ customer_case.customer_name or "Unnamed customer" }}</strong><p class="history-summary">{{ customer_case.complaint }}</p><p class="vehicle-meta">Follow-up: {{ customer_case.follow_up_status }}</p><a href="/cases/{{ customer_case.id }}">View case</a></div>{% endfor %}{% else %}<div class="empty-state">No customer cases yet. Create one or load the local demo data.</div>{% endif %}</article>
+    </section>
+
+    <section class="card system-status" aria-labelledby="system-status-heading">
+        <div class="section-heading"><div><p class="section-label">Environment</p><h2 id="system-status-heading">System status</h2></div></div>
+        <ul>
+            <li><strong>Local diagnostic engine:</strong> active</li>
+            <li><strong>Knowledge-base matching:</strong> active</li>
+            <li><strong>Store comparison:</strong> planning layer only</li>
+            <li><strong>OpenAI diagnostics:</strong> {% if ai_diagnostics_enabled %}enabled{% else %}disabled{% endif %}</li>
+            <li><strong>Syllable endpoint:</strong> available locally at <code>/api/voice/diagnose</code></li>
+            <li><strong>Public deployment:</strong> not connected yet</li>
+        </ul>
+    </section>
+{% else %}
+    <section class="hero">
+        <div class="hero-copy">
+            <p class="eyebrow">Automotive diagnostic intelligence</p>
             <h1>Know what your vehicle is telling you.</h1>
             <p class="hero-text">Create a local account to get started with vehicle profiles, OBD-II guidance, and saved diagnostic sessions.</p>
             <div class="button-row"><a class="button" href="/signup">Create an account</a><a class="button secondary" href="/login">Log in</a></div>
-        {% endif %}
-    </div>
-    <aside class="hero-panel" aria-label="System status"><p class="hero-panel-label">System status</p><p class="hero-panel-value">Local diagnostic workspace</p><p class="hero-panel-status"><span class="status-dot"></span>Ready for input</p></aside>
-</section>
-<section class="grid" aria-label="MechMate capabilities">
-    <article class="card feature-card"><span class="feature-number">01</span><h2>Vehicle profiles</h2><p>Keep year, make, model, mileage, and engine notes together before running a diagnostic session.</p></article>
-    <article class="card feature-card"><span class="feature-number">02</span><h2>OBD-II guidance</h2><p>Translate supported diagnostic trouble codes into possible causes, inspection steps, and tools.</p></article>
-    <article class="card feature-card"><span class="feature-number">03</span><h2>Symptom triage</h2><p>Describe what the vehicle is doing to get a practical starting point for inspection.</p></article>
-    <article class="card feature-card"><span class="feature-number">04</span><h2>Saved history</h2><p>Review past diagnostic sessions and the safety notes recorded with each result.</p></article>
-</section>
+        </div>
+        <aside class="hero-panel" aria-label="System status"><p class="hero-panel-label">System status</p><p class="hero-panel-value">Local diagnostic workspace</p><p class="hero-panel-status"><span class="status-dot"></span>Ready for input</p></aside>
+    </section>
+    <section class="grid" aria-label="MechMate capabilities">
+        <article class="card feature-card"><span class="feature-number">01</span><h2>Vehicle profiles</h2><p>Keep year, make, model, mileage, and engine notes together before running a diagnostic session.</p></article>
+        <article class="card feature-card"><span class="feature-number">02</span><h2>OBD-II guidance</h2><p>Translate supported diagnostic trouble codes into possible causes, inspection steps, and tools.</p></article>
+        <article class="card feature-card"><span class="feature-number">03</span><h2>Symptom triage</h2><p>Describe what the vehicle is doing to get a practical starting point for inspection.</p></article>
+        <article class="card feature-card"><span class="feature-number">04</span><h2>Saved history</h2><p>Review past diagnostic sessions and the safety notes recorded with each result.</p></article>
+    </section>
+{% endif %}
 {% endblock %}

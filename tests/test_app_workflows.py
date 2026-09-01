@@ -255,3 +255,65 @@ def test_case_reports_are_complete_and_private(client):
     other_user_report = client.get(report_url, follow_redirects=False)
     assert other_user_report.status_code == 303
     assert other_user_report.headers["location"] == "/cases"
+
+
+def test_dashboard_and_demo_seed_are_account_scoped(client):
+    public_dashboard = client.get("/")
+    assert public_dashboard.status_code == 200
+    assert "Create an account" in public_dashboard.text
+
+    unauthenticated_seed = client.post("/demo/seed", follow_redirects=False)
+    assert unauthenticated_seed.status_code == 303
+    assert unauthenticated_seed.headers["location"] == "/login"
+
+    signup(client, "dashboard-a@example.com")
+    dashboard = client.get("/")
+    assert dashboard.status_code == 200
+    for expected_content in (
+        "MVP overview",
+        "Saved vehicle profiles",
+        "Load demo data",
+        "Local diagnostic engine:",
+        "Syllable endpoint:",
+    ):
+        assert expected_content in dashboard.text
+
+    first_seed = client.post("/demo/seed", follow_redirects=False)
+    assert first_seed.status_code == 303
+    assert first_seed.headers["location"] == "/?demo=loaded"
+
+    seeded_dashboard = client.get(first_seed.headers["location"])
+    assert "Demo data loaded for this account." in seeded_dashboard.text
+    for expected_content in (
+        "2021 Honda Civic",
+        "Demo data: P0301 cylinder one misfire",
+        "Demo Customer",
+        "ready for follow-up",
+    ):
+        assert expected_content in seeded_dashboard.text
+
+    from app.database import get_dashboard_stats, get_user_by_email
+
+    account_a = get_user_by_email("dashboard-a@example.com")
+    first_stats = get_dashboard_stats(account_a["id"])
+    assert first_stats["total_vehicles"] == 1
+    assert first_stats["total_diagnostic_sessions"] == 1
+    assert first_stats["total_customer_cases"] == 1
+    assert first_stats["cases_ready_for_follow_up"] == 1
+
+    second_seed = client.post("/demo/seed", follow_redirects=False)
+    assert second_seed.status_code == 303
+    assert get_dashboard_stats(account_a["id"]) == first_stats
+
+    client.get("/logout")
+    signup(client, "dashboard-b@example.com")
+    account_b_dashboard = client.get("/")
+    assert "2021 Honda Civic" not in account_b_dashboard.text
+    assert "Demo data: P0301 cylinder one misfire" not in account_b_dashboard.text
+    assert "Demo Customer" not in account_b_dashboard.text
+
+    account_b = get_user_by_email("dashboard-b@example.com")
+    account_b_stats = get_dashboard_stats(account_b["id"])
+    assert account_b_stats["total_vehicles"] == 0
+    assert account_b_stats["total_diagnostic_sessions"] == 0
+    assert account_b_stats["total_customer_cases"] == 0
