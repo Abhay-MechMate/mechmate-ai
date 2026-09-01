@@ -1,6 +1,10 @@
 import hmac
 import os
+import re
+from datetime import date
+from urllib.parse import quote
 
+import httpx
 from fastapi import FastAPI, Form, Header, HTTPException, Request
 from fastapi.responses import HTMLResponse, RedirectResponse
 from fastapi.staticfiles import StaticFiles
@@ -63,6 +67,9 @@ DEMO_VEHICLE = {
 DEMO_DIAGNOSTIC_INPUT = "Demo data: P0301 cylinder one misfire"
 DEMO_CUSTOMER_NAME = "Demo Customer"
 DEMO_CASE_COMPLAINT = "Rough idle with OBD-II code P0301"
+NHTSA_VPIC_BASE_URL = "https://vpic.nhtsa.dot.gov/api/vehicles"
+NHTSA_MAKES_CACHE: dict[int, list[str]] = {}
+NHTSA_MODELS_CACHE: dict[tuple[int, str], list[str]] = {}
 
 # Create database tables when the website starts.
 init_db()
@@ -151,6 +158,123 @@ def is_voice_request_authorized(provided_key: str | None) -> bool:
         return True
 
     return bool(provided_key) and hmac.compare_digest(provided_key, configured_key)
+
+
+def fetch_nhtsa_json(path: str) -> dict | None:
+    """Fetch a JSON response from NHTSA vPIC without exposing it to the browser."""
+    try:
+        response = httpx.get(
+            f"{NHTSA_VPIC_BASE_URL}/{path}",
+            params={"format": "json"},
+            timeout=5.0,
+        )
+        response.raise_for_status()
+        payload = response.json()
+    except (httpx.HTTPError, ValueError):
+        return None
+
+    return payload if isinstance(payload, dict) else None
+
+
+def sorted_nhtsa_values(results: list[dict], field_name: str) -> list[str]:
+    """Extract, de-duplicate, and alphabetize vPIC text results."""
+    values = {
+        str(item.get(field_name, "")).strip()
+        for item in results
+        if isinstance(item, dict) and str(item.get(field_name, "")).strip()
+    }
+    return sorted(values, key=str.casefold)
+
+
+def valid_vehicle_year(year: int) -> bool:
+    return 1981 <= year <= date.today().year + 1
+
+
+@app.get("/api/vehicles/makes")
+def get_vehicle_makes(year: int):
+    if not valid_vehicle_year(year):
+        return {"makes": [], "error": "Choose a model year from 1981 through next model year."}
+
+    cached_makes = NHTSA_MAKES_CACHE.get(year)
+    if cached_makes is not None:
+        return {"makes": cached_makes}
+
+    # vPIC's make list is vehicle-type based. The selected model year is applied
+    # by the year-and-make model lookup that follows this request.
+    payload = fetch_nhtsa_json("GetMakesForVehicleType/car")
+    results = payload.get("Results") if payload else None
+    if not isinstance(results, list):
+        return {"makes": [], "error": "Vehicle make lookup is temporarily unavailable. Type a make manually."}
+
+    makes = sorted_nhtsa_values(results, "MakeName")
+    NHTSA_MAKES_CACHE[year] = makes
+    return {"makes": makes}
+
+
+@app.get("/api/vehicles/models")
+def get_vehicle_models(year: int, make: str):
+    normalized_make = make.strip()
+    if not valid_vehicle_year(year) or not normalized_make:
+        return {"models": [], "error": "Choose a valid year and enter a make first."}
+
+    cache_key = (year, normalized_make.casefold())
+    cached_models = NHTSA_MODELS_CACHE.get(cache_key)
+    if cached_models is not None:
+        return {"models": cached_models}
+
+    encoded_make = quote(normalized_make, safe="")
+    if year > 1995:
+        path = f"GetModelsForMakeYear/make/{encoded_make}/modelyear/{year}"
+    else:
+        path = f"GetModelsForMake/{encoded_make}"
+
+    payload = fetch_nhtsa_json(path)
+    results = payload.get("Results") if payload else None
+    if not isinstance(results, list):
+        return {"models": [], "error": "Vehicle model lookup is temporarily unavailable. Type a model manually."}
+
+    models = sorted_nhtsa_values(results, "Model_Name")
+    NHTSA_MODELS_CACHE[cache_key] = models
+    return {"models": models}
+
+
+@app.get("/api/vehicles/decode-vin")
+def decode_vehicle_vin(vin: str):
+    normalized_vin = vin.strip().upper()
+    if not re.fullmatch(r"[A-HJ-NPR-Z0-9]{17}", normalized_vin):
+        return {"vehicle": None, "error": "Enter a valid 17-character VIN to decode it."}
+
+    payload = fetch_nhtsa_json(f"DecodeVinValuesExtended/{normalized_vin}")
+    results = payload.get("Results") if payload else None
+    decoded_values = results[0] if isinstance(results, list) and results else None
+    if not isinstance(decoded_values, dict):
+        return {"vehicle": None, "error": "VIN decoding is temporarily unavailable. Enter vehicle details manually."}
+
+    decoded_year = str(decoded_values.get("ModelYear", "")).strip()
+    displacement = str(decoded_values.get("DisplacementL", "")).strip()
+    cylinders = str(decoded_values.get("EngineCylinders", "")).strip()
+    engine_parts = [
+        f"{displacement}L" if displacement else "",
+        f"{cylinders} cylinders" if cylinders else "",
+        str(decoded_values.get("EngineModel", "")).strip(),
+        str(decoded_values.get("FuelTypePrimary", "")).strip(),
+    ]
+    vehicle = {
+        "year": int(decoded_year) if decoded_year.isdigit() and valid_vehicle_year(int(decoded_year)) else None,
+        "make": str(decoded_values.get("Make", "")).strip(),
+        "model": str(decoded_values.get("Model", "")).strip(),
+        "engine": ", ".join(part for part in engine_parts if part),
+    }
+    error_text = str(decoded_values.get("ErrorText", "")).strip()
+    error_code = str(decoded_values.get("ErrorCode", "")).strip()
+    decode_error = error_text if error_code not in ("", "0") else None
+    if not any((vehicle["year"], vehicle["make"], vehicle["model"])):
+        return {
+            "vehicle": None,
+            "error": decode_error or "NHTSA could not identify this VIN. Enter vehicle details manually.",
+        }
+
+    return {"vehicle": vehicle, "error": decode_error}
 
 
 def run_diagnostic_with_knowledge(

@@ -90,7 +90,9 @@ def test_vehicle_form_supports_suggested_and_custom_make_model_entries(client):
     assert 'list="vehicleMakeOptions"' in vehicle_page.text
     assert 'name="model"' in vehicle_page.text
     assert 'list="vehicleModelOptions"' in vehicle_page.text
-    assert "Not listed? Type it manually." in vehicle_page.text
+    assert 'name="vin"' in vehicle_page.text
+    assert "Decode VIN" in vehicle_page.text
+    assert "Not listed? Type manually." in vehicle_page.text
 
     custom_vehicle = client.post(
         "/vehicles",
@@ -107,18 +109,9 @@ def test_vehicle_form_supports_suggested_and_custom_make_model_entries(client):
 
     vehicle_suggestions = client.get("/static/vehicle_dropdowns.js")
     assert vehicle_suggestions.status_code == 200
-    for expected_model in (
-        '"GR86"',
-        '"BRZ"',
-        '"Civic"',
-        '"MX-5 Miata"',
-        '"Golf R"',
-        '"F-150"',
-        '"Silverado 1500"',
-        '"Grand Cherokee"',
-        '"Camry"',
-    ):
-        assert expected_model in vehicle_suggestions.text
+    assert "/api/vehicles/makes" in vehicle_suggestions.text
+    assert "/api/vehicles/models" in vehicle_suggestions.text
+    assert "/api/vehicles/decode-vin" in vehicle_suggestions.text
 
 
 def test_knowledge_base_symptoms_are_used_before_generic_fallback(client):
@@ -185,6 +178,91 @@ def test_voice_diagnose_works_without_login(client):
 
     assert response.status_code == 200
     assert VOICE_RESPONSE_FIELDS <= set(response.json())
+
+
+def test_nhtsa_vehicle_lookup_routes_use_mocked_server_side_data(client, monkeypatch):
+    from app import main
+
+    main.NHTSA_MAKES_CACHE.clear()
+    main.NHTSA_MODELS_CACHE.clear()
+    requested_paths = []
+
+    def fake_nhtsa_fetch(path: str):
+        requested_paths.append(path)
+        if path == "GetMakesForVehicleType/car":
+            return {"Results": [{"MakeName": "Toyota"}, {"MakeName": "Honda"}]}
+        if path == "GetModelsForMakeYear/make/Toyota/modelyear/2023":
+            return {"Results": [{"Model_Name": "GR86"}, {"Model_Name": "Camry"}]}
+        if path == "DecodeVinValuesExtended/1HGCM82633A004352":
+            return {
+                "Results": [
+                    {
+                        "ModelYear": "2018",
+                        "Make": "HONDA",
+                        "Model": "Civic",
+                        "DisplacementL": "2",
+                        "EngineCylinders": "4",
+                        "EngineModel": "K20",
+                        "FuelTypePrimary": "Gasoline",
+                        "ErrorCode": "0",
+                        "ErrorText": "0 - VIN decoded clean.",
+                    }
+                ]
+            }
+        raise AssertionError(f"Unexpected NHTSA request: {path}")
+
+    monkeypatch.setattr(main, "fetch_nhtsa_json", fake_nhtsa_fetch)
+
+    makes_response = client.get("/api/vehicles/makes?year=2023")
+    assert makes_response.status_code == 200
+    assert makes_response.json() == {"makes": ["Honda", "Toyota"]}
+    assert client.get("/api/vehicles/makes?year=2023").json() == {
+        "makes": ["Honda", "Toyota"]
+    }
+    assert requested_paths.count("GetMakesForVehicleType/car") == 1
+
+    models_response = client.get("/api/vehicles/models?year=2023&make=Toyota")
+    assert models_response.status_code == 200
+    assert models_response.json() == {"models": ["Camry", "GR86"]}
+    assert client.get("/api/vehicles/models?year=2023&make=Toyota").json() == {
+        "models": ["Camry", "GR86"]
+    }
+    assert requested_paths.count("GetModelsForMakeYear/make/Toyota/modelyear/2023") == 1
+
+    vin_response = client.get("/api/vehicles/decode-vin?vin=1HGCM82633A004352")
+    assert vin_response.status_code == 200
+    assert vin_response.json() == {
+        "vehicle": {
+            "year": 2018,
+            "make": "HONDA",
+            "model": "Civic",
+            "engine": "2L, 4 cylinders, K20, Gasoline",
+        },
+        "error": None,
+    }
+
+
+def test_nhtsa_lookup_failure_and_invalid_vin_keep_manual_entry_available(client, monkeypatch):
+    from app import main
+
+    main.NHTSA_MAKES_CACHE.clear()
+    main.NHTSA_MODELS_CACHE.clear()
+    monkeypatch.setattr(main, "fetch_nhtsa_json", lambda path: None)
+
+    makes_response = client.get("/api/vehicles/makes?year=2023")
+    assert makes_response.status_code == 200
+    assert makes_response.json()["makes"] == []
+    assert "Type a make manually" in makes_response.json()["error"]
+
+    models_response = client.get("/api/vehicles/models?year=2023&make=Toyota")
+    assert models_response.status_code == 200
+    assert models_response.json()["models"] == []
+    assert "Type a model manually" in models_response.json()["error"]
+
+    invalid_vin_response = client.get("/api/vehicles/decode-vin?vin=not-a-vin")
+    assert invalid_vin_response.status_code == 200
+    assert invalid_vin_response.json()["vehicle"] is None
+    assert "17-character VIN" in invalid_vin_response.json()["error"]
 
 
 def test_account_data_is_isolated_for_vehicles_history_and_cases(client):
