@@ -34,6 +34,7 @@ from app.database import (
     search_knowledge_items,
     update_customer_case_follow_up_status,
 )
+from app.ai_client import generate_ai_diagnosis
 from app.diagnostic_engine import run_diagnostic
 
 
@@ -144,17 +145,26 @@ def run_diagnostic_with_knowledge(
     symptom: str,
     vehicle: dict | None,
 ):
+    knowledge_matches = []
     knowledge_item = None
     if not obd_code.strip() and symptom.strip():
         knowledge_matches = search_knowledge_items(symptom)
         knowledge_item = knowledge_matches[0] if knowledge_matches else None
 
-    return run_diagnostic(
+    local_result, input_text = run_diagnostic(
         obd_code=obd_code,
         symptom=symptom,
         vehicle=vehicle,
         knowledge_item=knowledge_item,
     )
+    ai_result = generate_ai_diagnosis(
+        vehicle=vehicle,
+        obd_code=obd_code,
+        symptom=symptom,
+        knowledge_matches=knowledge_matches,
+    )
+
+    return (ai_result or local_result), input_text
 
 
 def split_case_parts_and_tools(items: list[str]) -> tuple[list[str], list[str]]:

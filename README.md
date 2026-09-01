@@ -52,6 +52,33 @@ uvicorn app.main:app --reload
 Open `http://127.0.0.1:8000`. The API documentation is available at
 `http://127.0.0.1:8000/docs`.
 
+## Optional AI Diagnostics
+
+The local rule-based and knowledge-base diagnostic engine remains the default
+and safe fallback. AI diagnostics are attempted only when both
+`USE_AI_DIAGNOSTICS=true` and `OPENAI_API_KEY` are available in the server
+environment. If the key is missing, the request fails, or the response is not
+valid structured diagnostic data, MechMate uses the local engine instead.
+
+To enable optional AI diagnostics for the current PowerShell session, set the
+variables before starting Uvicorn:
+
+```powershell
+$env:OPENAI_API_KEY = "paste-your-key-here"
+$env:OPENAI_MODEL = "gpt-5"
+$env:USE_AI_DIAGNOSTICS = "true"
+```
+
+To force local fallback mode, use:
+
+```powershell
+$env:USE_AI_DIAGNOSTICS = "false"
+Remove-Item Env:OPENAI_API_KEY -ErrorAction SilentlyContinue
+```
+
+Do not put a real key in templates, browser JavaScript, committed files, or
+`.env.example`. `.env` remains ignored by Git.
+
 ## Run with Docker Compose
 
 Install Docker Desktop or Docker Engine with the Compose plugin, then run from
@@ -84,5 +111,5 @@ docker compose logs -f
   results.
 - Store comparison does not use real inventory, pricing, part numbers, or
   parts-store APIs yet.
-- Future OpenAI and Syllable work should keep API keys in environment variables
-  and out of browser code. No OpenAI calls are currently implemented.
+- Optional OpenAI diagnostics use backend environment variables only; Syllable
+  and public deployment work remain separate future phases.
