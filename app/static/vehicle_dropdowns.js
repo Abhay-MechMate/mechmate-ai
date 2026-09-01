@@ -162,4 +162,22 @@ function setupVehicleLookup() {
     decodeButton.addEventListener("click", decodeVin);
 }
 
+function setupIntakeVehiclePreview() {
+    const vehicleSelect = document.getElementById("intakeVehicle");
+    const preview = document.getElementById("intakeVehiclePreview");
+
+    if (!vehicleSelect || !preview) {
+        return;
+    }
+
+    function updatePreview() {
+        const selectedOption = vehicleSelect.options[vehicleSelect.selectedIndex];
+        preview.textContent = selectedOption ? selectedOption.dataset.vehicleSummary : "";
+    }
+
+    vehicleSelect.addEventListener("change", updatePreview);
+    updatePreview();
+}
+
 setupVehicleLookup();
+setupIntakeVehiclePreview();

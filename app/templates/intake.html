@@ -1,0 +1,58 @@
+{% extends "base.html" %}
+
+{% block content %}
+<header class="page-heading"><p class="page-kicker">Guided workflow</p><h1>Guided diagnostic intake</h1><p class="subtext">Move from a saved vehicle and customer concern to practical diagnostic guidance, parts/tools, store planning, and an optional customer case.</p></header>
+{% if error %}<div class="form-error">{{ error }}</div>{% endif %}
+{% if created_case_id %}<div class="success">Customer case saved successfully. <a href="/cases/{{ created_case_id }}">Open case #{{ created_case_id }}</a>.</div>{% endif %}
+
+{% if vehicles %}
+<form method="post" action="/intake" class="intake-form">
+    <section class="card intake-step">
+        <div class="section-heading"><div><p class="section-label">Step 1</p><h2>Vehicle</h2></div></div>
+        <label for="intakeVehicle">Choose a saved vehicle</label>
+        <select name="vehicle_id" id="intakeVehicle" required>{% for vehicle in vehicles %}<option value="{{ vehicle.id }}" data-vehicle-summary="{{ vehicle.year }} {{ vehicle.make }} {{ vehicle.model }} · {{ "{:,}".format(vehicle.mileage) }} miles{% if vehicle.engine %} · {{ vehicle.engine }}{% endif %}" {% if intake_values.vehicle_id == vehicle.id %}selected{% endif %}>{{ vehicle.year }} {{ vehicle.make }} {{ vehicle.model }} — {{ "{:,}".format(vehicle.mileage) }} miles</option>{% endfor %}</select>
+        <p class="field-help">Need another vehicle? <a href="/vehicles">Add a vehicle profile</a>.</p>
+        <div class="selected-vehicle"><strong>Selected vehicle</strong><span id="intakeVehiclePreview">{% if selected_vehicle %}{{ selected_vehicle.year }} {{ selected_vehicle.make }} {{ selected_vehicle.model }} · {{ "{:,}".format(selected_vehicle.mileage) }} miles{% if selected_vehicle.engine %} · {{ selected_vehicle.engine }}{% endif %}{% else %}Choose a saved vehicle to confirm its details.{% endif %}</span></div>
+    </section>
+
+    <section class="card intake-step">
+        <div class="section-heading"><div><p class="section-label">Step 2</p><h2>Problem</h2></div></div>
+        <div class="form-grid">
+            <div><label for="intakeObdCode">OBD-II code (optional)</label><input type="text" name="obd_code" id="intakeObdCode" value="{{ intake_values.obd_code or '' }}" placeholder="P0301"></div>
+            <div><label for="intakeSymptom">Customer complaint / symptom (optional)</label><input type="text" name="symptom" id="intakeSymptom" value="{{ intake_values.symptom or '' }}" placeholder="my tire is deflating"></div>
+            <p class="field-help full">Use either field or both. Examples: <code>P0301</code>, <code>my tire is deflating</code>, <code>smoking from exhaust</code>, <code>battery keeps dying</code>, <code>car shakes while braking</code>.</p>
+        </div>
+    </section>
+
+    <section class="card intake-step">
+        <div class="section-heading"><div><p class="section-label">Step 3</p><h2>Customer information <span class="muted">(optional)</span></h2></div></div>
+        <div class="form-grid">
+            <div><label for="intakeCustomerName">Customer name</label><input type="text" name="customer_name" id="intakeCustomerName" value="{{ intake_values.customer_name or '' }}"></div>
+            <div><label for="intakeCustomerEmail">Customer email</label><input type="email" name="customer_email" id="intakeCustomerEmail" value="{{ intake_values.customer_email or '' }}"></div>
+            <div><label for="intakeCustomerPhone">Customer phone</label><input type="tel" name="customer_phone" id="intakeCustomerPhone" value="{{ intake_values.customer_phone or '' }}"></div>
+            <div><label for="intakeFollowUpChannel">Preferred follow-up channel</label><select name="follow_up_channel" id="intakeFollowUpChannel">{% for channel in ['none', 'email', 'phone', 'text', 'WhatsApp', 'voice'] %}<option value="{{ channel }}" {% if intake_values.follow_up_channel == channel %}selected{% endif %}>{{ channel }}</option>{% endfor %}</select></div>
+            <label class="case-save-toggle full" for="saveAsCase"><input type="checkbox" name="save_as_case" id="saveAsCase" {% if intake_values.save_as_case %}checked{% endif %}> <span><strong>Save this as a customer case</strong><small>Creates an account-specific case with the diagnostic snapshot, suggested parts/tools, and store guidance.</small></span></label>
+        </div>
+    </section>
+    <button class="button intake-submit" type="submit">Run guided diagnosis</button>
+</form>
+{% else %}
+<section class="card"><div class="empty-state">Save a vehicle profile before starting guided intake. <a href="/vehicles">Add a vehicle</a>.</div></section>
+{% endif %}
+
+{% if result %}
+<section class="card result intake-result">
+    <div class="section-heading"><div><p class="section-label">Guided result</p><h2>Diagnostic assessment</h2></div><span class="severity">{{ result.severity }}</span></div>
+    {% if selected_vehicle %}<p class="vehicle-meta"><strong>Vehicle:</strong> {{ selected_vehicle.year }} {{ selected_vehicle.make }} {{ selected_vehicle.model }}</p>{% endif %}
+    <p class="vehicle-meta"><strong>Input:</strong> {{ input_text }}</p><p class="result-summary">{{ result.summary }}</p>
+    <div class="result-grid">
+        <div class="result-section"><h3>Possible causes</h3>{% if result.causes %}<ul>{% for cause in result.causes %}<li>{{ cause }}</li>{% endfor %}</ul>{% else %}<p class="muted">No causes listed.</p>{% endif %}</div>
+        <div class="result-section"><h3>Suggested parts or tools</h3>{% if result.parts %}<ul>{% for part in result.parts %}<li>{{ part }}</li>{% endfor %}</ul>{% else %}<p class="muted">No parts or tools listed.</p>{% endif %}</div>
+        <div class="result-section full-result"><h3>Recommended inspection</h3>{% if result.inspection %}<ol>{% for step in result.inspection %}<li>{{ step }}</li>{% endfor %}</ol>{% else %}<p class="muted">No inspection steps listed.</p>{% endif %}</div>
+        <div class="result-section full-result"><h3>Parts store guidance</h3>{% if result.parts_store_notes %}<ul>{% for note in result.parts_store_notes %}<li>{{ note }}</li>{% endfor %}</ul>{% else %}<p class="muted">No parts-store guidance listed.</p>{% endif %}</div>
+        <div class="result-section full-result"><h3>Store comparison factors</h3><p class="muted">Review these customer value factors before purchase:</p><ul><li>Cost</li><li>Distance to store</li><li>Shipping</li><li>Warranty</li><li>Fitment confirmation</li></ul><a class="button secondary" href="/store-comparison">View store comparison</a></div>
+        <div class="result-section full-result"><h3>Safety note</h3><p class="safety-note">{{ result.safety }}</p></div>
+    </div>
+</section>
+{% endif %}
+{% endblock %}

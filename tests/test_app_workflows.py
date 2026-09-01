@@ -435,3 +435,68 @@ def test_dashboard_and_demo_seed_are_account_scoped(client):
     assert account_b_stats["total_vehicles"] == 0
     assert account_b_stats["total_diagnostic_sessions"] == 0
     assert account_b_stats["total_customer_cases"] == 0
+
+
+def test_guided_intake_requires_login_and_creates_cases_only_when_selected(client):
+    unauthenticated_intake = client.get("/intake", follow_redirects=False)
+    assert unauthenticated_intake.status_code == 303
+    assert unauthenticated_intake.headers["location"] == "/login"
+
+    signup(client, "intake-a@example.com")
+    vehicle_a = add_vehicle(client, "intake-a@example.com", "Intake A Model")
+    intake_page = client.get("/intake")
+    assert intake_page.status_code == 200
+    assert "Guided diagnostic intake" in intake_page.text
+    assert "Save this as a customer case" in intake_page.text
+
+    diagnosis_only = client.post(
+        "/intake",
+        data={
+            "vehicle_id": vehicle_a["id"],
+            "obd_code": "P0301",
+            "symptom": "",
+            "customer_name": "",
+            "customer_email": "",
+            "customer_phone": "",
+            "follow_up_channel": "none",
+        },
+    )
+    assert diagnosis_only.status_code == 200
+    assert OBD_DATABASE["P0301"]["summary"] in diagnosis_only.text
+
+    from app.database import get_customer_cases, get_user_by_email
+
+    account_a = get_user_by_email("intake-a@example.com")
+    assert get_customer_cases(account_a["id"]) == []
+
+    save_case = client.post(
+        "/intake",
+        data={
+            "vehicle_id": vehicle_a["id"],
+            "obd_code": "",
+            "symptom": "my tire is deflating",
+            "customer_name": "Intake Customer",
+            "customer_email": "intake-customer@example.com",
+            "customer_phone": "555-0123",
+            "follow_up_channel": "text",
+            "save_as_case": "on",
+        },
+    )
+    assert save_case.status_code == 200
+    assert "Customer case saved successfully." in save_case.text
+
+    account_a_cases = get_customer_cases(account_a["id"])
+    assert len(account_a_cases) == 1
+    assert account_a_cases[0]["customer_name"] == "Intake Customer"
+    case_url = f"/cases/{account_a_cases[0]['id']}"
+    assert case_url in save_case.text
+
+    client.get("/logout")
+    signup(client, "intake-b@example.com")
+    vehicle_b = add_vehicle(client, "intake-b@example.com", "Intake B Model")
+    account_b = get_user_by_email("intake-b@example.com")
+    assert get_customer_cases(account_b["id"]) == []
+    other_account_case = client.get(case_url, follow_redirects=False)
+    assert other_account_case.status_code == 303
+    assert other_account_case.headers["location"] == "/cases"
+    assert "Intake B Model" in client.get("/intake").text

@@ -801,6 +801,131 @@ def diagnose_page(request: Request):
     )
 
 
+@app.get("/intake", response_class=HTMLResponse)
+def guided_intake_page(request: Request):
+    current_user = get_current_user(request)
+    if not current_user:
+        return redirect_to_login()
+
+    return render_template(
+        request,
+        "intake.html",
+        {
+            "vehicles": get_vehicles(current_user["id"]),
+            "result": None,
+            "intake_values": {},
+        },
+    )
+
+
+@app.post("/intake", response_class=HTMLResponse)
+def submit_guided_intake(
+    request: Request,
+    vehicle_id: int = Form(...),
+    obd_code: str = Form(""),
+    symptom: str = Form(""),
+    customer_name: str = Form(""),
+    customer_email: str = Form(""),
+    customer_phone: str = Form(""),
+    follow_up_channel: str = Form("none"),
+    save_as_case: bool = Form(False),
+):
+    current_user = get_current_user(request)
+    if not current_user:
+        return redirect_to_login()
+
+    vehicles = get_vehicles(current_user["id"])
+    selected_vehicle = get_vehicle(vehicle_id, current_user["id"])
+    intake_values = {
+        "vehicle_id": vehicle_id,
+        "obd_code": obd_code,
+        "symptom": symptom,
+        "customer_name": customer_name,
+        "customer_email": customer_email,
+        "customer_phone": customer_phone,
+        "follow_up_channel": follow_up_channel,
+        "save_as_case": save_as_case,
+    }
+    if not selected_vehicle:
+        return render_template(
+            request,
+            "intake.html",
+            {
+                "vehicles": vehicles,
+                "result": None,
+                "intake_values": intake_values,
+                "error": "Choose one of your saved vehicles before continuing.",
+            },
+        )
+
+    obd_code = obd_code.strip()
+    symptom = symptom.strip()
+    if not obd_code and not symptom:
+        return render_template(
+            request,
+            "intake.html",
+            {
+                "vehicles": vehicles,
+                "result": None,
+                "selected_vehicle": selected_vehicle,
+                "intake_values": intake_values,
+                "error": "Enter an OBD-II code, a customer complaint, or both.",
+            },
+        )
+
+    result, input_text = run_diagnostic_with_knowledge(
+        obd_code=obd_code,
+        symptom=symptom,
+        vehicle=selected_vehicle,
+    )
+    add_diagnostic_session(
+        user_id=current_user["id"],
+        vehicle_id=selected_vehicle["id"],
+        input_text=input_text,
+        summary=result["summary"],
+        severity=result["severity"],
+        causes=result["causes"],
+        inspection=result["inspection"],
+        parts=result["parts"],
+        parts_store_notes=result["parts_store_notes"],
+        safety=result["safety"],
+    )
+
+    created_case_id = None
+    if save_as_case:
+        suggested_parts, suggested_tools = split_case_parts_and_tools(result["parts"])
+        saved_complaint = symptom or f"OBD-II code: {obd_code.upper()}"
+        if symptom and obd_code:
+            saved_complaint = f"{symptom} (OBD-II code: {obd_code.upper()})"
+        created_case_id = add_customer_case(
+            user_id=current_user["id"],
+            vehicle_id=selected_vehicle["id"],
+            customer_name=customer_name.strip(),
+            customer_email=customer_email.strip(),
+            customer_phone=customer_phone.strip(),
+            complaint=saved_complaint,
+            diagnosis_summary=result["summary"],
+            severity=result["severity"],
+            suggested_parts=suggested_parts,
+            suggested_tools=suggested_tools,
+            store_guidance=result["parts_store_notes"],
+            follow_up_channel=follow_up_channel,
+        )
+
+    return render_template(
+        request,
+        "intake.html",
+        {
+            "vehicles": vehicles,
+            "result": result,
+            "selected_vehicle": selected_vehicle,
+            "input_text": input_text,
+            "intake_values": intake_values,
+            "created_case_id": created_case_id,
+        },
+    )
+
+
 @app.post("/diagnose", response_class=HTMLResponse)
 def run_diagnosis(
     request: Request,
