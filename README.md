@@ -1,81 +1,50 @@
 # MechMate AI
 
-MechMate AI is a self-hosted automotive diagnostic and parts-guidance website
-for car owners and parts-store associates. It helps users move from a vehicle
-profile and a car concern to likely causes, inspection steps, suggested
-parts/tools, safety guidance, and practical parts-store questions.
+MechMate AI is a local automotive diagnostic and parts-guidance MVP for car
+owners and parts-store associates. It guides a user from vehicle context and a
+code or customer complaint to cautious diagnostic guidance, inspection steps,
+suggested parts/tools, store-planning factors, and optional customer cases.
 
-The current MVP supports both an OBD-II-code workflow and a no-code customer
-complaint/symptom workflow. Its rule-based guidance is an AI-ready diagnostic
-knowledge base, not a trained AI model.
+The MVP supports OBD-II codes, no-code symptom workflows, NHTSA vehicle lookup
+and VIN autofill, an editable knowledge base, customer cases and reports, and a
+Syllable-ready voice endpoint. The local rule-based and knowledge-base engine
+is an AI-ready diagnostic knowledge base, not a trained AI model.
 
-Common no-code complaints can be maintained in the local Knowledge Base page.
-The app searches those editable entries before using its generic symptom
-fallback.
+## Quickstart on Windows
 
-## Product Direction
-
-- **Diagnostic assistant:** capture vehicle context and guide a cautious
-  first-pass diagnosis.
-- **OBD-II workflow:** enter a supported diagnostic trouble code for local
-  causes, inspection steps, tools, and safety notes.
-- **No-code symptom workflow:** describe a customer complaint such as a tire
-  losing air, exhaust smoke, or a battery that keeps dying.
-- **Parts/tools guidance:** identify useful part or tool categories and remind
-  users to confirm fitment before purchase.
-- **Store comparison MVP:** review a local planning catalog for cost, distance
-  to store, shipping, warranty, and fitment confirmation without claiming live
-  inventory or pricing today.
-- **Syllable follow-up (planned):** support multimodal voice, chat, email, and
-  text follow-up through a future integration.
-
-See [docs/product_direction.md](docs/product_direction.md) for the detailed
-MVP and future-work definition.
-
-## Current Stack
-
-- Python 3.12, FastAPI, and Jinja2
-- SQLite at `data/mechmate.db`
-- HTML, CSS, and JavaScript
-- Docker Compose for future homelab deployment
-
-## Run Locally
-
-From the repository root:
+From the repository root, rebuild the virtual environment if needed, install
+the pinned dependencies, and start the local site:
 
 ```powershell
+py -3.12 -m venv .venv
 .\.venv\Scripts\Activate.ps1
 pip install -r requirements.txt
 uvicorn app.main:app --reload
 ```
 
-Open `http://127.0.0.1:8000`. The API documentation is available at
+Open `http://127.0.0.1:8000`. API documentation is available at
 `http://127.0.0.1:8000/docs`.
 
 ## Run Tests
 
-From the repository root, activate the virtual environment and run:
+With the virtual environment active:
 
 ```powershell
 python -m pytest
 ```
 
-The pytest suite covers local diagnostic rules, knowledge-base symptom matches,
-public and protected routes, local authentication, account isolation, customer
-case isolation, the voice endpoint, and OpenAI fallback behavior. Tests create
-their own temporary SQLite database and do not require an OpenAI API key,
-Syllable, store APIs, or the local `data/mechmate.db` file.
+Tests use their own temporary SQLite database and mocked external responses.
+They do not require OpenAI, Syllable, NHTSA internet access, store APIs, or the
+local `data/mechmate.db` file.
 
-## Optional AI Diagnostics
+## Optional OpenAI Diagnostics
 
-The local rule-based and knowledge-base diagnostic engine remains the default
-and safe fallback. AI diagnostics are attempted only when both
-`USE_AI_DIAGNOSTICS=true` and `OPENAI_API_KEY` are available in the server
-environment. If the key is missing, the request fails, or the response is not
-valid structured diagnostic data, MechMate uses the local engine instead.
+The local diagnostic engine is the default and safe fallback. AI diagnostics
+are attempted only when both `USE_AI_DIAGNOSTICS=true` and `OPENAI_API_KEY` are
+available in the server environment. Missing keys, API failures, and invalid AI
+responses all fall back to local diagnostic guidance.
 
-To enable optional AI diagnostics for the current PowerShell session, set the
-variables before starting Uvicorn:
+Enable optional AI diagnostics for the current PowerShell session:
 
 ```powershell
 $env:OPENAI_API_KEY = "paste-your-key-here"
@@ -83,47 +52,45 @@ $env:OPENAI_MODEL = "gpt-5"
 $env:USE_AI_DIAGNOSTICS = "true"
 ```
 
-To force local fallback mode, use:
+Force local-only diagnostics:
 
 ```powershell
 $env:USE_AI_DIAGNOSTICS = "false"
 Remove-Item Env:OPENAI_API_KEY -ErrorAction SilentlyContinue
 ```
 
-Do not put a real key in templates, browser JavaScript, committed files, or
-`.env.example`. `.env` remains ignored by Git.
+Never put a real key in templates, browser JavaScript, committed files, or
+`.env.example`. A real `.env` remains ignored by Git.
 
-## Run with Docker Compose
+## Docker Local Run
 
-Install Docker Desktop or Docker Engine with the Compose plugin, then run from
-the repository root:
+Docker Compose builds the app and mounts local `data/` into `/app/data` for
+local SQLite persistence:
 
 ```powershell
 docker compose up -d --build
+docker compose logs -f
 ```
 
-Open `http://127.0.0.1:8000`. Compose mounts the local `data/` directory at
-`/app/data` in the container, so `data/mechmate.db` survives container restarts
-and image rebuilds.
-
-Stop the service:
+Stop the local container with:
 
 ```powershell
 docker compose down
 ```
 
-View service logs:
+## Project Guides
 
-```powershell
-docker compose logs -f
-```
+- [5-minute demo script](docs/demo_script.md)
+- [Deployment plan](docs/deployment_plan.md)
+- [Production-readiness checklist](docs/production_checklist.md)
+- [Syllable integration plan](docs/syllable_integration_plan.md)
+- [Product direction](docs/product_direction.md)
 
-## Notes
+## Current Boundaries
 
-- `data/` and real `.env` files are ignored by Git.
-- The current diagnostic engine is rule-based and remains the active source of
-  results.
-- Store comparison does not use real inventory, pricing, part numbers, or
-  parts-store APIs yet.
-- Optional OpenAI diagnostics use backend environment variables only; Syllable
-  and public deployment work remain separate future phases.
+- NHTSA lookup/VIN decoding is public-data support; manual vehicle entry still
+  works if it is unavailable.
+- Store Comparison is a planning layer and does not provide live inventory,
+  pricing, shipping, distance, or real part numbers.
+- Syllable, email, text, WhatsApp, and voice-message delivery are not connected.
+- The project is not currently deployed to a public host or homelab.
