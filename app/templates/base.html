@@ -13,20 +13,24 @@
             <span class="brand-copy"><span class="brand-name">MechMate AI</span><span class="brand-subtitle">Diagnostic dashboard</span></span>
         </a>
         <nav aria-label="Primary navigation">
-            <a href="/">Overview</a>
-            <a href="/vehicles">Vehicles</a>
-            <a href="/diagnose">Diagnose</a>
-            <a href="/history">History</a>
-            <a href="/cases">Customer Cases</a>
-            <a href="/knowledge-base">Knowledge base</a>
-            <a href="/store-comparison">Store Comparison</a>
-            {% if current_user %}
-                <span class="nav-user">{{ current_user.email }}</span>
-                <a href="/logout">Logout</a>
-            {% else %}
-                <a href="/login">Login</a>
-                <a class="nav-signup" href="/signup">Sign up</a>
-            {% endif %}
+            <span class="nav-links">
+                <a class="{% if request.url.path == '/' %}active{% endif %}" href="/">Overview</a>
+                <a class="{% if request.url.path.startswith('/vehicles') %}active{% endif %}" href="/vehicles">Vehicles</a>
+                <a class="{% if request.url.path.startswith('/diagnose') %}active{% endif %}" href="/diagnose">Diagnose</a>
+                <a class="{% if request.url.path.startswith('/history') %}active{% endif %}" href="/history">History</a>
+                <a class="{% if request.url.path.startswith('/cases') %}active{% endif %}" href="/cases">Customer Cases</a>
+                <a class="{% if request.url.path.startswith('/knowledge-base') %}active{% endif %}" href="/knowledge-base">Knowledge base</a>
+                <a class="{% if request.url.path.startswith('/store-comparison') %}active{% endif %}" href="/store-comparison">Store Comparison</a>
+            </span>
+            <span class="nav-account">
+                {% if current_user %}
+                    <span class="nav-user" title="{{ current_user.email }}">{{ current_user.email }}</span>
+                    <a href="/logout">Logout</a>
+                {% else %}
+                    <a class="{% if request.url.path == '/login' %}active{% endif %}" href="/login">Login</a>
+                    <a class="nav-signup {% if request.url.path == '/signup' %}active{% endif %}" href="/signup">Sign up</a>
+                {% endif %}
+            </span>
         </nav>
     </header>
     <main class="container">{% block content %}{% endblock %}</main>

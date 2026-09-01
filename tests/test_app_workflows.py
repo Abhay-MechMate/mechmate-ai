@@ -81,6 +81,46 @@ def test_signup_login_and_logout(client):
     assert login_response.headers["location"] == "/"
 
 
+def test_vehicle_form_supports_suggested_and_custom_make_model_entries(client):
+    signup(client, "vehicle-inputs@example.com")
+
+    vehicle_page = client.get("/vehicles")
+    assert vehicle_page.status_code == 200
+    assert 'name="make"' in vehicle_page.text
+    assert 'list="vehicleMakeOptions"' in vehicle_page.text
+    assert 'name="model"' in vehicle_page.text
+    assert 'list="vehicleModelOptions"' in vehicle_page.text
+    assert "Not listed? Type it manually." in vehicle_page.text
+
+    custom_vehicle = client.post(
+        "/vehicles",
+        data={
+            "year": 2024,
+            "make": "Custom Motors",
+            "model": "Prototype X",
+            "mileage": 1200,
+            "engine": "Electric prototype",
+        },
+    )
+    assert custom_vehicle.status_code == 200
+    assert "2024 Custom Motors Prototype X" in custom_vehicle.text
+
+    vehicle_suggestions = client.get("/static/vehicle_dropdowns.js")
+    assert vehicle_suggestions.status_code == 200
+    for expected_model in (
+        '"GR86"',
+        '"BRZ"',
+        '"Civic"',
+        '"MX-5 Miata"',
+        '"Golf R"',
+        '"F-150"',
+        '"Silverado 1500"',
+        '"Grand Cherokee"',
+        '"Camry"',
+    ):
+        assert expected_model in vehicle_suggestions.text
+
+
 def test_knowledge_base_symptoms_are_used_before_generic_fallback(client):
     from app.main import run_diagnostic_with_knowledge
 
