@@ -490,6 +490,7 @@ def test_guided_intake_requires_login_and_creates_cases_only_when_selected(clien
     assert account_a_cases[0]["customer_name"] == "Intake Customer"
     case_url = f"/cases/{account_a_cases[0]['id']}"
     assert case_url in save_case.text
+    assert f"{case_url}/report" in save_case.text
 
     client.get("/logout")
     signup(client, "intake-b@example.com")

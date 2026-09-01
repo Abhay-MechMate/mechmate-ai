@@ -3,7 +3,7 @@
 {% block content %}
 <header class="page-heading"><p class="page-kicker">Guided workflow</p><h1>Guided diagnostic intake</h1><p class="subtext">Move from a saved vehicle and customer concern to practical diagnostic guidance, parts/tools, store planning, and an optional customer case.</p></header>
 {% if error %}<div class="form-error">{{ error }}</div>{% endif %}
-{% if created_case_id %}<div class="success">Customer case saved successfully. <a href="/cases/{{ created_case_id }}">Open case #{{ created_case_id }}</a>.</div>{% endif %}
+{% if created_case_id %}<div class="success">Customer case saved successfully. <a href="/cases/{{ created_case_id }}">Open case #{{ created_case_id }}</a> or <a href="/cases/{{ created_case_id }}/report">view the printable report</a>.</div>{% endif %}
 
 {% if vehicles %}
 <form method="post" action="/intake" class="intake-form">
@@ -31,8 +31,11 @@
             <div><label for="intakeCustomerEmail">Customer email</label><input type="email" name="customer_email" id="intakeCustomerEmail" value="{{ intake_values.customer_email or '' }}"></div>
             <div><label for="intakeCustomerPhone">Customer phone</label><input type="tel" name="customer_phone" id="intakeCustomerPhone" value="{{ intake_values.customer_phone or '' }}"></div>
             <div><label for="intakeFollowUpChannel">Preferred follow-up channel</label><select name="follow_up_channel" id="intakeFollowUpChannel">{% for channel in ['none', 'email', 'phone', 'text', 'WhatsApp', 'voice'] %}<option value="{{ channel }}" {% if intake_values.follow_up_channel == channel %}selected{% endif %}>{{ channel }}</option>{% endfor %}</select></div>
-            <label class="case-save-toggle full" for="saveAsCase"><input type="checkbox" name="save_as_case" id="saveAsCase" {% if intake_values.save_as_case %}checked{% endif %}> <span><strong>Save this as a customer case</strong><small>Creates an account-specific case with the diagnostic snapshot, suggested parts/tools, and store guidance.</small></span></label>
         </div>
+    </section>
+    <section class="card intake-step">
+        <div class="section-heading"><div><p class="section-label">Step 4</p><h2>Save option</h2></div></div>
+        <label class="case-save-toggle" for="saveAsCase"><input type="checkbox" name="save_as_case" id="saveAsCase" {% if intake_values.save_as_case %}checked{% endif %}> <span><strong>Save this as a customer case</strong><small>Creates an account-specific case with the diagnostic snapshot, suggested parts/tools, and store guidance.</small></span></label>
     </section>
     <button class="button intake-submit" type="submit">Run guided diagnosis</button>
 </form>
