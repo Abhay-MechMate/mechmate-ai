@@ -22,6 +22,7 @@ from app.database import (
     add_vehicle,
     get_diagnostic_history,
     get_knowledge_items,
+    get_store_options,
     get_user_by_email,
     get_user_by_id,
     get_vehicle,
@@ -241,6 +242,18 @@ def add_knowledge_base_item(
             "knowledge_items": get_knowledge_items(),
             "message": "Knowledge item saved successfully.",
         },
+    )
+
+
+@app.get("/store-comparison", response_class=HTMLResponse)
+def store_comparison_page(request: Request):
+    if not get_current_user(request):
+        return redirect_to_login()
+
+    return render_template(
+        request,
+        "store_comparison.html",
+        {"store_options": get_store_options()},
     )
 
 

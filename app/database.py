@@ -45,6 +45,54 @@ DEFAULT_KNOWLEDGE_ITEMS = [
     ),
 ]
 
+DEFAULT_STORE_OPTIONS = [
+    (
+        "Advance Auto Parts",
+        "National parts retailer",
+        "https://shop.advanceautoparts.com",
+        "Use the store's vehicle lookup and confirm the selected part before purchase.",
+        1,
+        1,
+        "Warranty terms vary by product; review the specific item before purchase.",
+    ),
+    (
+        "AutoZone",
+        "National parts retailer",
+        "https://www.autozone.com",
+        "Use the store's vehicle lookup and confirm the selected part before purchase.",
+        1,
+        1,
+        "Warranty terms vary by product; review the specific item before purchase.",
+    ),
+    (
+        "O'Reilly Auto Parts",
+        "National parts retailer",
+        "https://www.oreillyauto.com",
+        "Use the store's vehicle lookup and confirm the selected part before purchase.",
+        1,
+        1,
+        "Warranty terms vary by product; review the specific item before purchase.",
+    ),
+    (
+        "RockAuto",
+        "Online parts retailer",
+        "https://www.rockauto.com",
+        "Compare catalog details and confirm fitment before ordering.",
+        0,
+        1,
+        "Warranty terms vary by product; review the specific item before purchase.",
+    ),
+    (
+        "Amazon",
+        "Online marketplace",
+        "https://www.amazon.com",
+        "Review the seller, listing details, and fitment information before ordering.",
+        0,
+        1,
+        "Warranty terms vary by seller and product; review the listing before purchase.",
+    ),
+]
+
 
 def get_connection():
     DB_PATH.parent.mkdir(exist_ok=True)
@@ -77,6 +125,31 @@ def seed_default_knowledge(connection: sqlite3.Connection) -> None:
         VALUES (?, ?, ?, ?, ?, ?, ?)
         """,
         DEFAULT_KNOWLEDGE_ITEMS,
+    )
+
+
+def seed_default_store_options(connection: sqlite3.Connection) -> None:
+    existing_option = connection.execute(
+        "SELECT 1 FROM store_options LIMIT 1"
+    ).fetchone()
+
+    if existing_option:
+        return
+
+    connection.executemany(
+        """
+        INSERT INTO store_options (
+            store_name,
+            store_type,
+            website_url,
+            notes,
+            supports_local_pickup,
+            supports_shipping,
+            warranty_notes
+        )
+        VALUES (?, ?, ?, ?, ?, ?, ?)
+        """,
+        DEFAULT_STORE_OPTIONS,
     )
 
 
@@ -146,6 +219,22 @@ def init_db():
             """
         )
 
+        connection.execute(
+            """
+            CREATE TABLE IF NOT EXISTS store_options (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                store_name TEXT NOT NULL,
+                store_type TEXT NOT NULL,
+                website_url TEXT DEFAULT '',
+                notes TEXT DEFAULT '',
+                supports_local_pickup INTEGER NOT NULL DEFAULT 0,
+                supports_shipping INTEGER NOT NULL DEFAULT 0,
+                warranty_notes TEXT DEFAULT '',
+                created_at TEXT DEFAULT CURRENT_TIMESTAMP
+            )
+            """
+        )
+
         # Migration section:
         # Add ownership columns and full-diagnosis fields to databases created
         # by earlier versions without deleting their existing records. Legacy
@@ -201,7 +290,30 @@ def init_db():
                     f"ALTER TABLE diagnostic_knowledge ADD COLUMN {column_name} {column_definition}"
                 )
 
+        store_columns = connection.execute(
+            "PRAGMA table_info(store_options)"
+        ).fetchall()
+        store_column_names = [column["name"] for column in store_columns]
+        store_migration_columns = {
+            "id": "INTEGER",
+            "store_name": "TEXT DEFAULT ''",
+            "store_type": "TEXT DEFAULT ''",
+            "website_url": "TEXT DEFAULT ''",
+            "notes": "TEXT DEFAULT ''",
+            "supports_local_pickup": "INTEGER DEFAULT 0",
+            "supports_shipping": "INTEGER DEFAULT 0",
+            "warranty_notes": "TEXT DEFAULT ''",
+            "created_at": "TEXT",
+        }
+
+        for column_name, column_definition in store_migration_columns.items():
+            if column_name not in store_column_names:
+                connection.execute(
+                    f"ALTER TABLE store_options ADD COLUMN {column_name} {column_definition}"
+                )
+
         seed_default_knowledge(connection)
+        seed_default_store_options(connection)
 
         connection.commit()
 
@@ -337,6 +449,64 @@ def search_knowledge_items(query: str) -> list[dict]:
             scored_items.append((score, item))
 
     return [item for _, item in sorted(scored_items, key=lambda match: match[0], reverse=True)]
+
+
+def add_store_option(
+    store_name: str,
+    store_type: str,
+    website_url: str = "",
+    notes: str = "",
+    supports_local_pickup: bool = False,
+    supports_shipping: bool = False,
+    warranty_notes: str = "",
+) -> int:
+    with get_connection() as connection:
+        cursor = connection.execute(
+            """
+            INSERT INTO store_options (
+                store_name,
+                store_type,
+                website_url,
+                notes,
+                supports_local_pickup,
+                supports_shipping,
+                warranty_notes
+            )
+            VALUES (?, ?, ?, ?, ?, ?, ?)
+            """,
+            (
+                store_name,
+                store_type,
+                website_url,
+                notes,
+                int(supports_local_pickup),
+                int(supports_shipping),
+                warranty_notes,
+            ),
+        )
+        connection.commit()
+        return cursor.lastrowid
+
+
+def get_store_options() -> list[dict]:
+    with get_connection() as connection:
+        rows = connection.execute(
+            """
+            SELECT
+                id,
+                store_name,
+                store_type,
+                website_url,
+                notes,
+                supports_local_pickup,
+                supports_shipping,
+                warranty_notes,
+                created_at
+            FROM store_options
+            ORDER BY store_name COLLATE NOCASE
+            """
+        ).fetchall()
+        return [dict(row) for row in rows]
 
 
 def add_vehicle(

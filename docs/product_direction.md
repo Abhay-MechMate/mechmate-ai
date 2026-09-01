@@ -48,7 +48,8 @@ The current MVP suggests part or tool categories and reminds the user to
 inspect first and confirm year, make, model, mileage, and engine fitment before
 buying. It does not claim exact parts or part numbers.
 
-Planned store comparison will help evaluate:
+The current Store Comparison page is a local planning catalog. Future comparison
+will help evaluate:
 
 - Cost
 - Distance to store
@@ -56,8 +57,8 @@ Planned store comparison will help evaluate:
 - Warranty
 - Fitment confirmation
 
-There is no live store inventory, pricing, or parts-store API integration in
-the current MVP.
+There is no live store inventory, pricing, distance, shipping estimate, or
+parts-store API integration in the current MVP.
 
 ## Future Syllable Follow-Up Workflow
 
@@ -80,7 +81,7 @@ implementation.
 
 - Real parts-store inventory, pricing, distance, shipping, or warranty APIs
 - Fake or real part numbers
-- Store comparison results
+- Live store comparison results
 - Public Syllable agent configuration, HTTPS deployment, or external voice/chat
   follow-up
 - Active OpenAI integration or a trained AI model

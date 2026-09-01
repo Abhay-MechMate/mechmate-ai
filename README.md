@@ -23,8 +23,9 @@ fallback.
   losing air, exhaust smoke, or a battery that keeps dying.
 - **Parts/tools guidance:** identify useful part or tool categories and remind
   users to confirm fitment before purchase.
-- **Store comparison (planned):** compare cost, distance to store, shipping,
-  warranty, and fitment confirmation without claiming live inventory today.
+- **Store comparison MVP:** review a local planning catalog for cost, distance
+  to store, shipping, warranty, and fitment confirmation without claiming live
+  inventory or pricing today.
 - **Syllable follow-up (planned):** support multimodal voice, chat, email, and
   text follow-up through a future integration.
 

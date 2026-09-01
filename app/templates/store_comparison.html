@@ -1,0 +1,24 @@
+{% extends "base.html" %}
+
+{% block content %}
+<header class="page-heading"><p class="page-kicker">Parts guidance</p><h1>Store comparison</h1><p class="subtext">Use this MVP planning layer to organize customer value factors before buying a suggested part or tool.</p></header>
+<section class="card">
+    <div class="section-heading"><div><p class="section-label">What to compare</p><h2>Customer value factors</h2></div></div>
+    <p class="muted">Live pricing, inventory, distance, and shipping estimates are not connected yet. A future comparison can evaluate cost, distance to store, shipping, warranty, and fitment confirmation for a selected part or tool.</p>
+    <ul><li>Cost</li><li>Distance to store</li><li>Shipping</li><li>Warranty</li><li>Fitment confirmation</li></ul>
+</section>
+<section class="card">
+    <div class="section-heading"><div><p class="section-label">Store options</p><h2>Planning catalog</h2></div>{% if store_options %}<span class="section-label">{{ store_options|length }} listed</span>{% endif %}</div>
+    {% if store_options %}{% for store in store_options %}
+    <article class="list-item">
+        <strong class="vehicle-name">{{ store.store_name }}</strong>
+        <p class="vehicle-meta"><strong>Store type:</strong> {{ store.store_type }}</p>
+        <p class="vehicle-meta"><strong>Local pickup:</strong> {% if store.supports_local_pickup %}Listed as supported{% else %}Not listed for this MVP{% endif %}</p>
+        <p class="vehicle-meta"><strong>Shipping:</strong> {% if store.supports_shipping %}Listed as supported{% else %}Not listed for this MVP{% endif %}</p>
+        <p class="vehicle-meta"><strong>Warranty:</strong> {{ store.warranty_notes }}</p>
+        <p class="vehicle-meta"><strong>Notes:</strong> {{ store.notes }}</p>
+        {% if store.website_url %}<p class="vehicle-meta"><a href="{{ store.website_url }}" target="_blank" rel="noopener noreferrer">Visit store website</a></p>{% endif %}
+    </article>
+    {% endfor %}{% else %}<div class="empty-state">No store options are available yet.</div>{% endif %}
+</section>
+{% endblock %}

@@ -22,7 +22,7 @@
         <div class="result-section"><h3>Suggested parts or tools</h3>{% if result.parts %}<ul>{% for part in result.parts %}<li>{{ part }}</li>{% endfor %}</ul>{% else %}<p class="muted">No parts or tools listed.</p>{% endif %}</div>
         <div class="result-section full-result"><h3>Recommended inspection</h3>{% if result.inspection %}<ol>{% for step in result.inspection %}<li>{{ step }}</li>{% endfor %}</ol>{% else %}<p class="muted">No inspection steps listed.</p>{% endif %}</div>
         <div class="result-section full-result"><h3>Parts store guidance</h3>{% if result.parts_store_notes %}<ul>{% for note in result.parts_store_notes %}<li>{{ note }}</li>{% endfor %}</ul>{% else %}<p class="muted">No parts-store guidance listed.</p>{% endif %}</div>
-        <div class="result-section full-result"><h3>Planned store comparison</h3><p class="muted">A future comparison view may help evaluate cost, distance to store, shipping, warranty, and fitment confirmation. Live store inventory and pricing are not connected in this MVP.</p></div>
+        <div class="result-section full-result"><h3>Store comparison and parts guidance</h3><p class="muted">Use the suggested part or tool category above as a starting point. This MVP comparison layer helps organize the customer value factors to review before purchase:</p><ul><li>Cost</li><li>Distance to store</li><li>Shipping</li><li>Warranty</li><li>Fitment confirmation</li></ul><p class="muted">Live pricing, inventory, distance, and shipping estimates are not connected yet.</p><a class="button secondary" href="/store-comparison">Compare store options</a></div>
         <div class="result-section full-result"><h3>Safety note</h3><p class="safety-note">{{ result.safety }}</p></div>
     </div>
 </section>
