@@ -1,0 +1,33 @@
+{% extends "base.html" %}
+
+{% block content %}
+<article class="case-report">
+    <div class="report-actions no-print">
+        <a class="button secondary" href="/cases/{{ customer_case.id }}">Back to customer case</a>
+        <button class="button" type="button" onclick="window.print()">Print report</button>
+    </div>
+    <header class="page-heading report-header">
+        <p class="page-kicker">MechMate AI</p>
+        <h1>Customer Case Report</h1>
+        <p class="subtext">Case #{{ customer_case.id }} · Created {{ customer_case.created_at }}</p>
+    </header>
+
+    <section class="card result">
+        <div class="section-heading"><div><p class="section-label">Customer</p><h2>{{ customer_case.customer_name or "Customer name not provided" }}</h2></div><span class="severity">{{ customer_case.severity }}</span></div>
+        {% if customer_case.customer_email %}<p class="vehicle-meta"><strong>Email:</strong> {{ customer_case.customer_email }}</p>{% endif %}
+        {% if customer_case.customer_phone %}<p class="vehicle-meta"><strong>Phone:</strong> {{ customer_case.customer_phone }}</p>{% endif %}
+        <p class="vehicle-meta"><strong>Vehicle:</strong>{% if customer_case.year %} {{ customer_case.year }} {{ customer_case.make }} {{ customer_case.model }}{% if customer_case.mileage %} — {{ "{:,}".format(customer_case.mileage) }} miles{% endif %}{% if customer_case.engine %} — {{ customer_case.engine }}{% endif %}{% else %} Vehicle details not available{% endif %}</p>
+        <p class="vehicle-meta"><strong>Customer complaint:</strong> {{ customer_case.complaint }}</p>
+        <p class="result-summary"><strong>Diagnostic summary:</strong> {{ customer_case.diagnosis_summary }}</p>
+
+        <div class="result-grid">
+            <div class="result-section"><h3>Suggested parts</h3>{% if customer_case.suggested_parts %}<ul>{% for item in customer_case.suggested_parts %}<li>{{ item }}</li>{% endfor %}</ul>{% else %}<p class="muted">No separate part categories were identified.</p>{% endif %}</div>
+            <div class="result-section"><h3>Suggested tools</h3>{% if customer_case.suggested_tools %}<ul>{% for item in customer_case.suggested_tools %}<li>{{ item }}</li>{% endfor %}</ul>{% else %}<p class="muted">No separate tools were identified.</p>{% endif %}</div>
+            <div class="result-section full-result"><h3>Store guidance</h3>{% if customer_case.store_guidance %}<ul>{% for item in customer_case.store_guidance %}<li>{{ item }}</li>{% endfor %}</ul>{% else %}<p class="muted">No store guidance was saved.</p>{% endif %}</div>
+            <div class="result-section full-result"><h3>Store comparison factors</h3><ul><li>Cost</li><li>Distance to store</li><li>Shipping</li><li>Warranty</li><li>Fitment confirmation</li></ul></div>
+            <div class="result-section full-result"><h3>Safety / caution</h3><p class="safety-note">Confirm the reported concern and root cause before replacing parts. Follow the vehicle manufacturer's safety guidance while inspecting or servicing the vehicle.</p></div>
+            <div class="result-section full-result"><h3>Important disclaimer</h3><p class="safety-note">This report is diagnostic guidance, not a guaranteed repair. Confirm fitment and inspect before replacing parts.</p></div>
+        </div>
+    </section>
+</article>
+{% endblock %}

@@ -1,0 +1,257 @@
+from app.diagnostic_engine import OBD_DATABASE
+
+
+VOICE_RESPONSE_FIELDS = {
+    "spoken_response",
+    "summary",
+    "severity",
+    "causes",
+    "inspection",
+    "parts",
+    "parts_store_notes",
+    "safety",
+}
+
+
+def signup(client, email: str, password: str = "safe-password"):
+    response = client.post(
+        "/signup",
+        data={
+            "email": email,
+            "password": password,
+            "confirm_password": password,
+        },
+        follow_redirects=False,
+    )
+    assert response.status_code == 303
+    return response
+
+
+def add_vehicle(client, email: str, model: str):
+    response = client.post(
+        "/vehicles",
+        data={
+            "year": 2022,
+            "make": "Toyota",
+            "model": model,
+            "mileage": 42000,
+            "engine": "2.5L I4",
+        },
+    )
+    assert response.status_code == 200
+
+    from app.database import get_user_by_email, get_vehicles
+
+    user = get_user_by_email(email)
+    return get_vehicles(user["id"])[0]
+
+
+def test_public_pages_and_protected_route_redirects(client):
+    assert client.get("/").status_code == 200
+    assert client.get("/login").status_code == 200
+    assert client.get("/signup").status_code == 200
+
+    for path in ("/vehicles", "/diagnose", "/history"):
+        response = client.get(path, follow_redirects=False)
+        assert response.status_code == 303
+        assert response.headers["location"] == "/login"
+
+
+def test_signup_login_and_logout(client):
+    signup(client, "login-test@example.com")
+
+    from app.database import get_user_by_email
+
+    assert get_user_by_email("login-test@example.com") is not None
+
+    logout_response = client.get("/logout", follow_redirects=False)
+    assert logout_response.status_code == 303
+    assert logout_response.headers["location"] == "/"
+
+    protected_response = client.get("/vehicles", follow_redirects=False)
+    assert protected_response.status_code == 303
+    assert protected_response.headers["location"] == "/login"
+
+    login_response = client.post(
+        "/login",
+        data={"email": "login-test@example.com", "password": "safe-password"},
+        follow_redirects=False,
+    )
+    assert login_response.status_code == 303
+    assert login_response.headers["location"] == "/"
+
+
+def test_knowledge_base_symptoms_are_used_before_generic_fallback(client):
+    from app.main import run_diagnostic_with_knowledge
+
+    tire_result, _ = run_diagnostic_with_knowledge(
+        obd_code="",
+        symptom="my tire is deflating",
+        vehicle=None,
+    )
+    smoke_result, _ = run_diagnostic_with_knowledge(
+        obd_code="",
+        symptom="smoking from exhaust",
+        vehicle=None,
+    )
+
+    assert "knowledge-base match" in tire_result["summary"].lower()
+    assert tire_result["severity"] == "Needs Inspection"
+    assert "knowledge-base match" in smoke_result["summary"].lower()
+    assert "PCV valve" in smoke_result["summary"]
+
+
+def test_openai_disabled_uses_local_fallback(client, monkeypatch):
+    from app import ai_client
+    from app.main import run_diagnostic_with_knowledge
+
+    monkeypatch.setenv("USE_AI_DIAGNOSTICS", "false")
+    monkeypatch.setenv("OPENAI_API_KEY", "not-used-in-tests")
+    monkeypatch.setattr(
+        ai_client,
+        "OpenAI",
+        lambda: (_ for _ in ()).throw(AssertionError("OpenAI must not be called")),
+    )
+
+    result, _ = run_diagnostic_with_knowledge(
+        obd_code="P0301",
+        symptom="",
+        vehicle=None,
+    )
+
+    assert result["summary"].startswith(OBD_DATABASE["P0301"]["summary"])
+
+
+def test_missing_openai_key_uses_local_fallback(client, monkeypatch):
+    from app.main import run_diagnostic_with_knowledge
+
+    monkeypatch.setenv("USE_AI_DIAGNOSTICS", "true")
+    monkeypatch.delenv("OPENAI_API_KEY", raising=False)
+
+    result, _ = run_diagnostic_with_knowledge(
+        obd_code="P0301",
+        symptom="",
+        vehicle=None,
+    )
+
+    assert result["summary"].startswith(OBD_DATABASE["P0301"]["summary"])
+
+
+def test_voice_diagnose_works_without_login(client):
+    response = client.post(
+        "/api/voice/diagnose",
+        json={"obd_code": "P0301", "symptom": ""},
+    )
+
+    assert response.status_code == 200
+    assert VOICE_RESPONSE_FIELDS <= set(response.json())
+
+
+def test_account_data_is_isolated_for_vehicles_history_and_cases(client):
+    signup(client, "account-a@example.com")
+    vehicle_a = add_vehicle(client, "account-a@example.com", "Account A Model")
+
+    diagnosis_response = client.post(
+        "/diagnose",
+        data={"vehicle_id": vehicle_a["id"], "obd_code": "P0301", "symptom": ""},
+    )
+    assert diagnosis_response.status_code == 200
+
+    case_response = client.post(
+        "/cases/new",
+        data={
+            "vehicle_id": vehicle_a["id"],
+            "customer_name": "Account A Customer",
+            "customer_email": "customer-a@example.com",
+            "customer_phone": "555-0100",
+            "complaint": "my tire is deflating",
+            "obd_code": "",
+            "follow_up_channel": "text",
+        },
+        follow_redirects=False,
+    )
+    assert case_response.status_code == 303
+    case_url = case_response.headers["location"]
+
+    case_detail_a = client.get(case_url)
+    assert case_detail_a.status_code == 200
+    assert "Account A Customer" in case_detail_a.text
+
+    status_response = client.post(
+        f"{case_url}/follow-up-status",
+        data={"status": "contacted"},
+        follow_redirects=False,
+    )
+    assert status_response.status_code == 303
+    assert "contacted" in client.get(case_url).text
+
+    client.get("/logout")
+    signup(client, "account-b@example.com")
+    add_vehicle(client, "account-b@example.com", "Account B Model")
+
+    vehicles_page = client.get("/vehicles")
+    history_page = client.get("/history")
+    cases_page = client.get("/cases")
+    case_detail = client.get(case_url, follow_redirects=False)
+
+    assert "Account A Model" not in vehicles_page.text
+    assert "P0301" not in history_page.text
+    assert "Account A Customer" not in cases_page.text
+    assert case_detail.status_code == 303
+    assert case_detail.headers["location"] == "/cases"
+
+
+def test_case_reports_are_complete_and_private(client):
+    signup(client, "report-owner@example.com")
+    vehicle = add_vehicle(client, "report-owner@example.com", "Report Owner Model")
+
+    case_response = client.post(
+        "/cases/new",
+        data={
+            "vehicle_id": vehicle["id"],
+            "customer_name": "Report Customer",
+            "customer_email": "report-customer@example.com",
+            "customer_phone": "555-0111",
+            "complaint": "my tire is deflating",
+            "obd_code": "",
+            "follow_up_channel": "text",
+        },
+        follow_redirects=False,
+    )
+    assert case_response.status_code == 303
+    case_url = case_response.headers["location"]
+    report_url = f"{case_url}/report"
+
+    case_detail = client.get(case_url)
+    assert case_detail.status_code == 200
+    assert "View printable report" in case_detail.text
+    for draft_type in (
+        "Text message",
+        "Email",
+        "Voice/phone script",
+        "Syllable agent script",
+    ):
+        assert draft_type in case_detail.text
+    assert (
+        "These are draft messages only. No email, text, WhatsApp, or voice call is sent in this MVP."
+        in case_detail.text
+    )
+
+    report_response = client.get(report_url)
+    assert report_response.status_code == 200
+    for expected_content in (
+        "Report Customer",
+        "Report Owner Model",
+        "my tire is deflating",
+        "Knowledge-base match",
+        "Tire repair kit",
+        "Tire pressure gauge",
+        "This report is diagnostic guidance, not a guaranteed repair. Confirm fitment and inspect before replacing parts.",
+    ):
+        assert expected_content in report_response.text
+
+    client.get("/logout")
+    signup(client, "report-other@example.com")
+    other_user_report = client.get(report_url, follow_redirects=False)
+    assert other_user_report.status_code == 303
+    assert other_user_report.headers["location"] == "/cases"

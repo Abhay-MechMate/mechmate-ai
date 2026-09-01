@@ -52,6 +52,20 @@ uvicorn app.main:app --reload
 Open `http://127.0.0.1:8000`. The API documentation is available at
 `http://127.0.0.1:8000/docs`.
 
+## Run Tests
+
+From the repository root, activate the virtual environment and run:
+
+```powershell
+python -m pytest
+```
+
+The pytest suite covers local diagnostic rules, knowledge-base symptom matches,
+public and protected routes, local authentication, account isolation, customer
+case isolation, the voice endpoint, and OpenAI fallback behavior. Tests create
+their own temporary SQLite database and do not require an OpenAI API key,
+Syllable, store APIs, or the local `data/mechmate.db` file.
+
 ## Optional AI Diagnostics
 
 The local rule-based and knowledge-base diagnostic engine remains the default

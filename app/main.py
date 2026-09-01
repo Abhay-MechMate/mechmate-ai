@@ -192,6 +192,63 @@ def split_case_parts_and_tools(items: list[str]) -> tuple[list[str], list[str]]:
     return suggested_parts, suggested_tools
 
 
+def format_case_vehicle(customer_case: dict) -> str:
+    """Create a concise vehicle description from a saved customer case."""
+    vehicle_details = [
+        str(customer_case.get("year") or "").strip(),
+        str(customer_case.get("make") or "").strip(),
+        str(customer_case.get("model") or "").strip(),
+    ]
+    vehicle_name = " ".join(part for part in vehicle_details if part)
+    return vehicle_name or "the selected vehicle"
+
+
+def format_case_recommendations(customer_case: dict) -> str:
+    """Summarize the saved parts and tools without generating new advice."""
+    recommendations = customer_case.get("suggested_parts", []) + customer_case.get(
+        "suggested_tools", []
+    )
+    return ", ".join(recommendations) if recommendations else "the saved inspection guidance"
+
+
+def build_follow_up_drafts(customer_case: dict) -> dict[str, str]:
+    """Build local-only follow-up drafts from an existing customer case."""
+    customer_name = customer_case.get("customer_name") or "there"
+    vehicle = format_case_vehicle(customer_case)
+    complaint = customer_case.get("complaint") or "the reported concern"
+    recommendations = format_case_recommendations(customer_case)
+    next_step = (
+        "review the diagnostic guidance, inspect the vehicle, and confirm the root "
+        "cause before replacing parts"
+    )
+    no_send_notice = "No message has been sent yet."
+
+    return {
+        "Text message": (
+            f"Hi {customer_name}, this is MechMate AI following up about your {vehicle}. "
+            f"You reported: {complaint}. The recommended next step is to {next_step}. "
+            f"Suggested parts/tools: {recommendations}. {no_send_notice}"
+        ),
+        "Email": (
+            f"Hello {customer_name},\n\n"
+            f"This is a draft follow-up for your {vehicle} regarding: {complaint}. "
+            f"The recommended next step is to {next_step}. Suggested parts/tools: "
+            f"{recommendations}.\n\n{no_send_notice}"
+        ),
+        "Voice/phone script": (
+            f"Hello {customer_name}. I am following up about your {vehicle} and the concern "
+            f"you reported: {complaint}. The recommended next step is to {next_step}. "
+            f"The saved suggested parts/tools are {recommendations}. {no_send_notice}"
+        ),
+        "Syllable agent script": (
+            f"Introduce MechMate AI, confirm the customer is {customer_name}, and reference "
+            f"their {vehicle}. Restate the complaint: {complaint}. Explain that the recommended "
+            f"next step is to {next_step}, with suggested parts/tools of {recommendations}. "
+            f"{no_send_notice}"
+        ),
+    }
+
+
 @app.get("/", response_class=HTMLResponse)
 def home(request: Request):
     return render_template(request, "index.html")
@@ -354,7 +411,25 @@ def case_detail_page(case_id: int, request: Request):
         {
             "customer_case": customer_case,
             "follow_up_statuses": FOLLOW_UP_STATUSES,
+            "follow_up_drafts": build_follow_up_drafts(customer_case),
         },
+    )
+
+
+@app.get("/cases/{case_id}/report", response_class=HTMLResponse)
+def case_report_page(case_id: int, request: Request):
+    current_user = get_current_user(request)
+    if not current_user:
+        return redirect_to_login()
+
+    customer_case = get_customer_case(case_id, current_user["id"])
+    if not customer_case:
+        return RedirectResponse("/cases", status_code=303)
+
+    return render_template(
+        request,
+        "case_report.html",
+        {"customer_case": customer_case},
     )
 
 
@@ -379,6 +454,7 @@ def update_case_follow_up_status(
             {
                 "customer_case": customer_case,
                 "follow_up_statuses": FOLLOW_UP_STATUSES,
+                "follow_up_drafts": build_follow_up_drafts(customer_case),
                 "error": "Choose a valid follow-up status.",
             },
         )
