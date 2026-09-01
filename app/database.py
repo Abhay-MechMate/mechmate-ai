@@ -235,6 +235,30 @@ def init_db():
             """
         )
 
+        connection.execute(
+            """
+            CREATE TABLE IF NOT EXISTS customer_cases (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                user_id INTEGER NOT NULL,
+                vehicle_id INTEGER,
+                customer_name TEXT DEFAULT '',
+                customer_email TEXT DEFAULT '',
+                customer_phone TEXT DEFAULT '',
+                complaint TEXT NOT NULL,
+                diagnosis_summary TEXT NOT NULL,
+                severity TEXT NOT NULL,
+                suggested_parts TEXT DEFAULT '[]',
+                suggested_tools TEXT DEFAULT '[]',
+                store_guidance TEXT DEFAULT '[]',
+                follow_up_channel TEXT DEFAULT 'none',
+                follow_up_status TEXT DEFAULT 'not needed',
+                created_at TEXT DEFAULT CURRENT_TIMESTAMP,
+                FOREIGN KEY (user_id) REFERENCES users(id),
+                FOREIGN KEY (vehicle_id) REFERENCES vehicles(id)
+            )
+            """
+        )
+
         # Migration section:
         # Add ownership columns and full-diagnosis fields to databases created
         # by earlier versions without deleting their existing records. Legacy
@@ -310,6 +334,34 @@ def init_db():
             if column_name not in store_column_names:
                 connection.execute(
                     f"ALTER TABLE store_options ADD COLUMN {column_name} {column_definition}"
+                )
+
+        case_columns = connection.execute(
+            "PRAGMA table_info(customer_cases)"
+        ).fetchall()
+        case_column_names = [column["name"] for column in case_columns]
+        case_migration_columns = {
+            "id": "INTEGER",
+            "user_id": "INTEGER",
+            "vehicle_id": "INTEGER",
+            "customer_name": "TEXT DEFAULT ''",
+            "customer_email": "TEXT DEFAULT ''",
+            "customer_phone": "TEXT DEFAULT ''",
+            "complaint": "TEXT DEFAULT ''",
+            "diagnosis_summary": "TEXT DEFAULT ''",
+            "severity": "TEXT DEFAULT ''",
+            "suggested_parts": "TEXT DEFAULT '[]'",
+            "suggested_tools": "TEXT DEFAULT '[]'",
+            "store_guidance": "TEXT DEFAULT '[]'",
+            "follow_up_channel": "TEXT DEFAULT 'none'",
+            "follow_up_status": "TEXT DEFAULT 'not needed'",
+            "created_at": "TEXT",
+        }
+
+        for column_name, column_definition in case_migration_columns.items():
+            if column_name not in case_column_names:
+                connection.execute(
+                    f"ALTER TABLE customer_cases ADD COLUMN {column_name} {column_definition}"
                 )
 
         seed_default_knowledge(connection)
@@ -507,6 +559,175 @@ def get_store_options() -> list[dict]:
             """
         ).fetchall()
         return [dict(row) for row in rows]
+
+
+def add_customer_case(
+    user_id: int,
+    vehicle_id: int,
+    customer_name: str,
+    customer_email: str,
+    customer_phone: str,
+    complaint: str,
+    diagnosis_summary: str,
+    severity: str,
+    suggested_parts: list[str],
+    suggested_tools: list[str],
+    store_guidance: list[str],
+    follow_up_channel: str,
+    follow_up_status: str = "not needed",
+) -> int:
+    with get_connection() as connection:
+        cursor = connection.execute(
+            """
+            INSERT INTO customer_cases (
+                user_id,
+                vehicle_id,
+                customer_name,
+                customer_email,
+                customer_phone,
+                complaint,
+                diagnosis_summary,
+                severity,
+                suggested_parts,
+                suggested_tools,
+                store_guidance,
+                follow_up_channel,
+                follow_up_status
+            )
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            """,
+            (
+                user_id,
+                vehicle_id,
+                customer_name,
+                customer_email,
+                customer_phone,
+                complaint,
+                diagnosis_summary,
+                severity,
+                json.dumps(suggested_parts),
+                json.dumps(suggested_tools),
+                json.dumps(store_guidance),
+                follow_up_channel,
+                follow_up_status,
+            ),
+        )
+        connection.commit()
+        return cursor.lastrowid
+
+
+def _decode_case_list(value: str | None) -> list[str]:
+    try:
+        decoded_value = json.loads(value or "[]")
+    except json.JSONDecodeError:
+        return [value] if value else []
+
+    return decoded_value if isinstance(decoded_value, list) else []
+
+
+def _format_customer_case(row: sqlite3.Row) -> dict:
+    customer_case = dict(row)
+    customer_case["suggested_parts"] = _decode_case_list(
+        customer_case["suggested_parts"]
+    )
+    customer_case["suggested_tools"] = _decode_case_list(
+        customer_case["suggested_tools"]
+    )
+    customer_case["store_guidance"] = _decode_case_list(
+        customer_case["store_guidance"]
+    )
+    return customer_case
+
+
+def get_customer_cases(user_id: int) -> list[dict]:
+    with get_connection() as connection:
+        rows = connection.execute(
+            """
+            SELECT
+                customer_cases.id,
+                customer_cases.user_id,
+                customer_cases.vehicle_id,
+                customer_cases.customer_name,
+                customer_cases.customer_email,
+                customer_cases.customer_phone,
+                customer_cases.complaint,
+                customer_cases.diagnosis_summary,
+                customer_cases.severity,
+                customer_cases.suggested_parts,
+                customer_cases.suggested_tools,
+                customer_cases.store_guidance,
+                customer_cases.follow_up_channel,
+                customer_cases.follow_up_status,
+                customer_cases.created_at,
+                vehicles.year,
+                vehicles.make,
+                vehicles.model,
+                vehicles.mileage,
+                vehicles.engine
+            FROM customer_cases
+            LEFT JOIN vehicles
+                ON customer_cases.vehicle_id = vehicles.id
+                AND customer_cases.user_id = vehicles.user_id
+            WHERE customer_cases.user_id = ?
+            ORDER BY customer_cases.created_at DESC, customer_cases.id DESC
+            """,
+            (user_id,),
+        ).fetchall()
+        return [_format_customer_case(row) for row in rows]
+
+
+def get_customer_case(case_id: int, user_id: int) -> dict | None:
+    with get_connection() as connection:
+        row = connection.execute(
+            """
+            SELECT
+                customer_cases.id,
+                customer_cases.user_id,
+                customer_cases.vehicle_id,
+                customer_cases.customer_name,
+                customer_cases.customer_email,
+                customer_cases.customer_phone,
+                customer_cases.complaint,
+                customer_cases.diagnosis_summary,
+                customer_cases.severity,
+                customer_cases.suggested_parts,
+                customer_cases.suggested_tools,
+                customer_cases.store_guidance,
+                customer_cases.follow_up_channel,
+                customer_cases.follow_up_status,
+                customer_cases.created_at,
+                vehicles.year,
+                vehicles.make,
+                vehicles.model,
+                vehicles.mileage,
+                vehicles.engine
+            FROM customer_cases
+            LEFT JOIN vehicles
+                ON customer_cases.vehicle_id = vehicles.id
+                AND customer_cases.user_id = vehicles.user_id
+            WHERE customer_cases.id = ? AND customer_cases.user_id = ?
+            """,
+            (case_id, user_id),
+        ).fetchone()
+        return _format_customer_case(row) if row else None
+
+
+def update_customer_case_follow_up_status(
+    case_id: int,
+    user_id: int,
+    status: str,
+) -> bool:
+    with get_connection() as connection:
+        cursor = connection.execute(
+            """
+            UPDATE customer_cases
+            SET follow_up_status = ?
+            WHERE id = ? AND user_id = ?
+            """,
+            (status, case_id, user_id),
+        )
+        connection.commit()
+        return cursor.rowcount > 0
 
 
 def add_vehicle(

@@ -1,0 +1,23 @@
+{% extends "base.html" %}
+
+{% block content %}
+<header class="page-heading"><p class="page-kicker">Customer workflow</p><h1>Create customer case</h1><p class="subtext">Capture the customer concern, run the existing diagnostic flow, and save the resulting parts and store guidance.</p></header>
+{% if error %}<div class="form-error">{{ error }}</div>{% endif %}
+{% if vehicles %}
+<section class="card">
+    <div class="section-heading"><div><p class="section-label">New case</p><h2>Customer and vehicle details</h2></div></div>
+    <form method="post" action="/cases/new" class="form-grid">
+        <div class="full"><label for="caseVehicle">Vehicle</label><select name="vehicle_id" id="caseVehicle" required>{% for vehicle in vehicles %}<option value="{{ vehicle.id }}">{{ vehicle.year }} {{ vehicle.make }} {{ vehicle.model }} - {{ "{:,}".format(vehicle.mileage) }} miles</option>{% endfor %}</select></div>
+        <div><label for="customerName">Customer name (optional)</label><input type="text" name="customer_name" id="customerName"></div>
+        <div><label for="customerEmail">Customer email (optional)</label><input type="email" name="customer_email" id="customerEmail"></div>
+        <div><label for="customerPhone">Customer phone (optional)</label><input type="tel" name="customer_phone" id="customerPhone"></div>
+        <div><label for="caseCode">OBD-II code (optional)</label><input type="text" name="obd_code" id="caseCode" placeholder="P0301"></div>
+        <div class="full"><label for="caseComplaint">Customer complaint / symptom</label><input type="text" name="complaint" id="caseComplaint" placeholder="my tire is deflating"></div>
+        <div class="full"><label for="followUpChannel">Preferred follow-up channel</label><select name="follow_up_channel" id="followUpChannel"><option value="none">none</option><option value="email">email</option><option value="phone">phone</option><option value="text">text</option><option value="WhatsApp">WhatsApp</option><option value="voice">voice</option></select></div>
+        <button class="button full" type="submit">Create case and run diagnosis</button>
+    </form>
+</section>
+{% else %}
+<section class="card"><div class="empty-state">Save a vehicle profile before creating a customer case. <a href="/vehicles">Add a vehicle</a>.</div></section>
+{% endif %}
+{% endblock %}

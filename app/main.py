@@ -16,11 +16,14 @@ from app.auth import (
     verify_password,
 )
 from app.database import (
+    add_customer_case,
     add_diagnostic_session,
     add_knowledge_item,
     add_user,
     add_vehicle,
     get_diagnostic_history,
+    get_customer_case,
+    get_customer_cases,
     get_knowledge_items,
     get_store_options,
     get_user_by_email,
@@ -29,6 +32,7 @@ from app.database import (
     get_vehicles,
     init_db,
     search_knowledge_items,
+    update_customer_case_follow_up_status,
 )
 from app.diagnostic_engine import run_diagnostic
 
@@ -37,6 +41,14 @@ app = FastAPI(title="MechMate AI")
 
 app.mount("/static", StaticFiles(directory="app/static"), name="static")
 templates = Jinja2Templates(directory="app/templates")
+
+FOLLOW_UP_STATUSES = [
+    "not needed",
+    "not contacted",
+    "ready for follow-up",
+    "contacted",
+    "resolved",
+]
 
 # Create database tables when the website starts.
 init_db()
@@ -145,6 +157,31 @@ def run_diagnostic_with_knowledge(
     )
 
 
+def split_case_parts_and_tools(items: list[str]) -> tuple[list[str], list[str]]:
+    tool_keywords = (
+        "scanner",
+        "tester",
+        "wrench",
+        "socket",
+        "jack",
+        "gauge",
+        "flashlight",
+        "hand tools",
+        "compression",
+        "notebook",
+    )
+    suggested_parts = []
+    suggested_tools = []
+
+    for item in items:
+        if any(keyword in item.lower() for keyword in tool_keywords):
+            suggested_tools.append(item)
+        else:
+            suggested_parts.append(item)
+
+    return suggested_parts, suggested_tools
+
+
 @app.get("/", response_class=HTMLResponse)
 def home(request: Request):
     return render_template(request, "index.html")
@@ -198,6 +235,150 @@ def logout():
     response = RedirectResponse("/", status_code=303)
     response.delete_cookie(SESSION_COOKIE_NAME)
     return response
+
+
+@app.get("/cases", response_class=HTMLResponse)
+def cases_page(request: Request):
+    current_user = get_current_user(request)
+    if not current_user:
+        return redirect_to_login()
+
+    return render_template(
+        request,
+        "cases.html",
+        {"customer_cases": get_customer_cases(current_user["id"])},
+    )
+
+
+@app.get("/cases/new", response_class=HTMLResponse)
+def new_case_page(request: Request):
+    current_user = get_current_user(request)
+    if not current_user:
+        return redirect_to_login()
+
+    return render_template(
+        request,
+        "case_new.html",
+        {"vehicles": get_vehicles(current_user["id"])},
+    )
+
+
+@app.post("/cases/new", response_class=HTMLResponse)
+def create_customer_case(
+    request: Request,
+    vehicle_id: int = Form(...),
+    customer_name: str = Form(""),
+    customer_email: str = Form(""),
+    customer_phone: str = Form(""),
+    complaint: str = Form(""),
+    obd_code: str = Form(""),
+    follow_up_channel: str = Form("none"),
+):
+    current_user = get_current_user(request)
+    if not current_user:
+        return redirect_to_login()
+
+    selected_vehicle = get_vehicle(vehicle_id, current_user["id"])
+    if not selected_vehicle:
+        return render_template(
+            request,
+            "case_new.html",
+            {
+                "vehicles": get_vehicles(current_user["id"]),
+                "error": "Choose one of your saved vehicles before creating a case.",
+            },
+        )
+
+    complaint = complaint.strip()
+    obd_code = obd_code.strip()
+    if not complaint and not obd_code:
+        return render_template(
+            request,
+            "case_new.html",
+            {
+                "vehicles": get_vehicles(current_user["id"]),
+                "error": "Enter a customer complaint, an OBD-II code, or both.",
+            },
+        )
+
+    result, _ = run_diagnostic_with_knowledge(
+        obd_code=obd_code,
+        symptom=complaint,
+        vehicle=selected_vehicle,
+    )
+    suggested_parts, suggested_tools = split_case_parts_and_tools(result["parts"])
+    saved_complaint = complaint or f"OBD-II code: {obd_code.upper()}"
+    if complaint and obd_code:
+        saved_complaint = f"{complaint} (OBD-II code: {obd_code.upper()})"
+
+    case_id = add_customer_case(
+        user_id=current_user["id"],
+        vehicle_id=selected_vehicle["id"],
+        customer_name=customer_name.strip(),
+        customer_email=customer_email.strip(),
+        customer_phone=customer_phone.strip(),
+        complaint=saved_complaint,
+        diagnosis_summary=result["summary"],
+        severity=result["severity"],
+        suggested_parts=suggested_parts,
+        suggested_tools=suggested_tools,
+        store_guidance=result["parts_store_notes"],
+        follow_up_channel=follow_up_channel,
+    )
+    return RedirectResponse(f"/cases/{case_id}", status_code=303)
+
+
+@app.get("/cases/{case_id}", response_class=HTMLResponse)
+def case_detail_page(case_id: int, request: Request):
+    current_user = get_current_user(request)
+    if not current_user:
+        return redirect_to_login()
+
+    customer_case = get_customer_case(case_id, current_user["id"])
+    if not customer_case:
+        return RedirectResponse("/cases", status_code=303)
+
+    return render_template(
+        request,
+        "case_detail.html",
+        {
+            "customer_case": customer_case,
+            "follow_up_statuses": FOLLOW_UP_STATUSES,
+        },
+    )
+
+
+@app.post("/cases/{case_id}/follow-up-status", response_class=HTMLResponse)
+def update_case_follow_up_status(
+    case_id: int,
+    request: Request,
+    status: str = Form(...),
+):
+    current_user = get_current_user(request)
+    if not current_user:
+        return redirect_to_login()
+
+    customer_case = get_customer_case(case_id, current_user["id"])
+    if not customer_case:
+        return RedirectResponse("/cases", status_code=303)
+
+    if status not in FOLLOW_UP_STATUSES:
+        return render_template(
+            request,
+            "case_detail.html",
+            {
+                "customer_case": customer_case,
+                "follow_up_statuses": FOLLOW_UP_STATUSES,
+                "error": "Choose a valid follow-up status.",
+            },
+        )
+
+    update_customer_case_follow_up_status(
+        case_id=case_id,
+        user_id=current_user["id"],
+        status=status,
+    )
+    return RedirectResponse(f"/cases/{case_id}", status_code=303)
 
 
 @app.get("/knowledge-base", response_class=HTMLResponse)

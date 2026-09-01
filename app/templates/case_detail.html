@@ -1,0 +1,24 @@
+{% extends "base.html" %}
+
+{% block content %}
+<header class="page-heading"><p class="page-kicker">Customer workflow</p><h1>Customer case</h1><p class="subtext">Review the saved diagnostic snapshot, suggested parts/tools, store guidance, and follow-up plan.</p></header>
+{% if error %}<div class="form-error">{{ error }}</div>{% endif %}
+<section class="card result">
+    <div class="section-heading"><div><p class="section-label">Case #{{ customer_case.id }}</p><h2>{{ customer_case.customer_name or "Unnamed customer" }}</h2></div><span class="severity">{{ customer_case.severity }}</span></div>
+    <p class="vehicle-meta"><strong>Created:</strong> {{ customer_case.created_at }}</p>
+    {% if customer_case.year %}<p class="vehicle-meta"><strong>Vehicle:</strong> {{ customer_case.year }} {{ customer_case.make }} {{ customer_case.model }} — {{ "{:,}".format(customer_case.mileage) }} miles{% if customer_case.engine %} — {{ customer_case.engine }}{% endif %}</p>{% endif %}
+    {% if customer_case.customer_email %}<p class="vehicle-meta"><strong>Email:</strong> {{ customer_case.customer_email }}</p>{% endif %}
+    {% if customer_case.customer_phone %}<p class="vehicle-meta"><strong>Phone:</strong> {{ customer_case.customer_phone }}</p>{% endif %}
+    <p class="vehicle-meta"><strong>Preferred follow-up:</strong> {{ customer_case.follow_up_channel }}</p>
+    <p class="vehicle-meta"><strong>Complaint:</strong> {{ customer_case.complaint }}</p>
+    <p class="result-summary">{{ customer_case.diagnosis_summary }}</p>
+    <div class="result-grid">
+        <div class="result-section"><h3>Suggested parts</h3>{% if customer_case.suggested_parts %}<ul>{% for item in customer_case.suggested_parts %}<li>{{ item }}</li>{% endfor %}</ul>{% else %}<p class="muted">No separate part categories were identified.</p>{% endif %}</div>
+        <div class="result-section"><h3>Suggested tools</h3>{% if customer_case.suggested_tools %}<ul>{% for item in customer_case.suggested_tools %}<li>{{ item }}</li>{% endfor %}</ul>{% else %}<p class="muted">No separate tools were identified.</p>{% endif %}</div>
+        <div class="result-section full-result"><h3>Store guidance</h3>{% if customer_case.store_guidance %}<ul>{% for item in customer_case.store_guidance %}<li>{{ item }}</li>{% endfor %}</ul>{% else %}<p class="muted">No store guidance was saved.</p>{% endif %}</div>
+        <div class="result-section full-result"><h3>Follow-up status</h3><p class="vehicle-meta"><strong>Current status:</strong> {{ customer_case.follow_up_status }}</p><form method="post" action="/cases/{{ customer_case.id }}/follow-up-status" class="form-grid"><div><label for="followUpStatus">Update status</label><select name="status" id="followUpStatus">{% for status in follow_up_statuses %}<option value="{{ status }}" {% if status == customer_case.follow_up_status %}selected{% endif %}>{{ status }}</option>{% endfor %}</select></div><button class="button" type="submit">Save follow-up status</button></form></div>
+        <div class="result-section full-result"><h3>Follow-up note</h3><p class="safety-note">Syllable follow-up is planned but not connected yet. No email, text, WhatsApp, or voice message is sent in this MVP.</p></div>
+    </div>
+</section>
+<p><a href="/cases">Back to customer cases</a></p>
+{% endblock %}

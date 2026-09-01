@@ -1,0 +1,17 @@
+{% extends "base.html" %}
+
+{% block content %}
+<header class="page-heading"><p class="page-kicker">Customer workflow</p><h1>Customer cases</h1><p class="subtext">Track a customer problem from vehicle context and diagnosis through parts guidance and planned follow-up.</p></header>
+<section class="card">
+    <div class="section-heading"><div><p class="section-label">Case list</p><h2>Saved cases</h2></div><a class="button" href="/cases/new">Create customer case</a></div>
+    {% if customer_cases %}{% for customer_case in customer_cases %}
+    <article class="list-item">
+        <div class="history-top"><div><strong class="history-title">{{ customer_case.customer_name or "Unnamed customer" }}</strong><p class="history-meta">{% if customer_case.year %}{{ customer_case.year }} {{ customer_case.make }} {{ customer_case.model }}{% else %}Vehicle details unavailable{% endif %}</p></div><span class="history-date">{{ customer_case.created_at }}</span></div>
+        <p class="history-input"><strong>Complaint:</strong> {{ customer_case.complaint }}</p>
+        <p class="history-summary">{{ customer_case.diagnosis_summary }}</p>
+        <p><span class="severity">{{ customer_case.severity }}</span> <span class="section-label">Follow-up: {{ customer_case.follow_up_status }}</span></p>
+        <a href="/cases/{{ customer_case.id }}">View case details</a>
+    </article>
+    {% endfor %}{% else %}<div class="empty-state">No customer cases yet. Create a case to save a customer complaint, diagnosis, and follow-up plan.</div>{% endif %}
+</section>
+{% endblock %}
