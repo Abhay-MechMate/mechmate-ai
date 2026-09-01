@@ -17,14 +17,17 @@ from app.auth import (
 )
 from app.database import (
     add_diagnostic_session,
+    add_knowledge_item,
     add_user,
     add_vehicle,
     get_diagnostic_history,
+    get_knowledge_items,
     get_user_by_email,
     get_user_by_id,
     get_vehicle,
     get_vehicles,
     init_db,
+    search_knowledge_items,
 )
 from app.diagnostic_engine import run_diagnostic
 
@@ -123,6 +126,24 @@ def is_voice_request_authorized(provided_key: str | None) -> bool:
     return bool(provided_key) and hmac.compare_digest(provided_key, configured_key)
 
 
+def run_diagnostic_with_knowledge(
+    obd_code: str,
+    symptom: str,
+    vehicle: dict | None,
+):
+    knowledge_item = None
+    if not obd_code.strip() and symptom.strip():
+        knowledge_matches = search_knowledge_items(symptom)
+        knowledge_item = knowledge_matches[0] if knowledge_matches else None
+
+    return run_diagnostic(
+        obd_code=obd_code,
+        symptom=symptom,
+        vehicle=vehicle,
+        knowledge_item=knowledge_item,
+    )
+
+
 @app.get("/", response_class=HTMLResponse)
 def home(request: Request):
     return render_template(request, "index.html")
@@ -176,6 +197,51 @@ def logout():
     response = RedirectResponse("/", status_code=303)
     response.delete_cookie(SESSION_COOKIE_NAME)
     return response
+
+
+@app.get("/knowledge-base", response_class=HTMLResponse)
+def knowledge_base_page(request: Request):
+    if not get_current_user(request):
+        return redirect_to_login()
+
+    return render_template(
+        request,
+        "knowledge_base.html",
+        {"knowledge_items": get_knowledge_items()},
+    )
+
+
+@app.post("/knowledge-base", response_class=HTMLResponse)
+def add_knowledge_base_item(
+    request: Request,
+    part_category: str = Form(...),
+    problem: str = Form(...),
+    symptom: str = Form(...),
+    suggested_parts: str = Form(""),
+    suggested_tools: str = Form(""),
+    store_notes: str = Form(""),
+    source_label: str = Form("Manual entry"),
+):
+    if not get_current_user(request):
+        return redirect_to_login()
+
+    add_knowledge_item(
+        part_category=part_category.strip(),
+        problem=problem.strip(),
+        symptom=symptom.strip(),
+        suggested_parts=suggested_parts.strip(),
+        suggested_tools=suggested_tools.strip(),
+        store_notes=store_notes.strip(),
+        source_label=source_label.strip() or "Manual entry",
+    )
+    return render_template(
+        request,
+        "knowledge_base.html",
+        {
+            "knowledge_items": get_knowledge_items(),
+            "message": "Knowledge item saved successfully.",
+        },
+    )
 
 
 @app.get("/vehicles", response_class=HTMLResponse)
@@ -249,7 +315,11 @@ def run_diagnosis(
     selected_vehicle = (
         get_vehicle(vehicle_id, current_user["id"]) if vehicle_id > 0 else None
     )
-    result, input_text = run_diagnostic(obd_code=obd_code, symptom=symptom, vehicle=selected_vehicle)
+    result, input_text = run_diagnostic_with_knowledge(
+        obd_code=obd_code,
+        symptom=symptom,
+        vehicle=selected_vehicle,
+    )
 
     add_diagnostic_session(
         user_id=current_user["id"],
@@ -298,7 +368,7 @@ def voice_diagnose(
         raise HTTPException(status_code=401, detail="Unauthorized voice tool request.")
 
     vehicle = build_voice_vehicle(request_data)
-    result, _ = run_diagnostic(
+    result, _ = run_diagnostic_with_knowledge(
         obd_code=request_data.obd_code or "",
         symptom=request_data.symptom or "",
         vehicle=vehicle,

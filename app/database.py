@@ -1,9 +1,49 @@
 from pathlib import Path
 import sqlite3
 import json
+import re
 
 
 DB_PATH = Path("data") / "mechmate.db"
+
+DEFAULT_KNOWLEDGE_ITEMS = [
+    (
+        "Tire repair",
+        "Tire leak or puncture",
+        "my tire is deflating",
+        "Tire repair kit, replacement tire if damage is not repairable",
+        "Tire pressure gauge, tire tread-depth gauge",
+        "Confirm the leak location and tire condition before purchase. Verify tire size and fitment before replacing a tire.",
+        "Default MVP knowledge",
+    ),
+    (
+        "Battery",
+        "Weak or dead battery",
+        "slow crank or no start",
+        "Battery, battery terminal cleaner",
+        "Battery tester, multimeter",
+        "Test the battery and charging system before replacing parts. Confirm battery group size and terminal fitment.",
+        "Default MVP knowledge",
+    ),
+    (
+        "PCV valve",
+        "PCV valve issue",
+        "smoking from exhaust",
+        "PCV valve, compatible vacuum hose",
+        "Basic hand tools, inspection light",
+        "Inspect the crankcase ventilation system and confirm the source of smoke before buying parts. Verify vehicle fitment.",
+        "Default MVP knowledge",
+    ),
+    (
+        "Ignition coil / spark plug",
+        "Cylinder misfire",
+        "P0301 or rough idle",
+        "Ignition coil, spark plug",
+        "OBD-II scanner, spark plug socket",
+        "Confirm the misfire cause before replacing ignition parts. Verify engine-specific fitment.",
+        "Default MVP knowledge",
+    ),
+]
 
 
 def get_connection():
@@ -13,6 +53,31 @@ def get_connection():
     connection.row_factory = sqlite3.Row
 
     return connection
+
+
+def seed_default_knowledge(connection: sqlite3.Connection) -> None:
+    existing_item = connection.execute(
+        "SELECT 1 FROM diagnostic_knowledge LIMIT 1"
+    ).fetchone()
+
+    if existing_item:
+        return
+
+    connection.executemany(
+        """
+        INSERT INTO diagnostic_knowledge (
+            part_category,
+            problem,
+            symptom,
+            suggested_parts,
+            suggested_tools,
+            store_notes,
+            source_label
+        )
+        VALUES (?, ?, ?, ?, ?, ?, ?)
+        """,
+        DEFAULT_KNOWLEDGE_ITEMS,
+    )
 
 
 def init_db():
@@ -65,6 +130,22 @@ def init_db():
             """
         )
 
+        connection.execute(
+            """
+            CREATE TABLE IF NOT EXISTS diagnostic_knowledge (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                part_category TEXT NOT NULL,
+                problem TEXT NOT NULL,
+                symptom TEXT NOT NULL,
+                suggested_parts TEXT DEFAULT '',
+                suggested_tools TEXT DEFAULT '',
+                store_notes TEXT DEFAULT '',
+                source_label TEXT DEFAULT '',
+                created_at TEXT DEFAULT CURRENT_TIMESTAMP
+            )
+            """
+        )
+
         # Migration section:
         # Add ownership columns and full-diagnosis fields to databases created
         # by earlier versions without deleting their existing records. Legacy
@@ -97,6 +178,30 @@ def init_db():
                 connection.execute(
                     f"ALTER TABLE diagnostic_sessions ADD COLUMN {column_name} {column_definition}"
                 )
+
+        knowledge_columns = connection.execute(
+            "PRAGMA table_info(diagnostic_knowledge)"
+        ).fetchall()
+        knowledge_column_names = [column["name"] for column in knowledge_columns]
+        knowledge_migration_columns = {
+            "id": "INTEGER",
+            "part_category": "TEXT DEFAULT ''",
+            "problem": "TEXT DEFAULT ''",
+            "symptom": "TEXT DEFAULT ''",
+            "suggested_parts": "TEXT DEFAULT ''",
+            "suggested_tools": "TEXT DEFAULT ''",
+            "store_notes": "TEXT DEFAULT ''",
+            "source_label": "TEXT DEFAULT ''",
+            "created_at": "TEXT",
+        }
+
+        for column_name, column_definition in knowledge_migration_columns.items():
+            if column_name not in knowledge_column_names:
+                connection.execute(
+                    f"ALTER TABLE diagnostic_knowledge ADD COLUMN {column_name} {column_definition}"
+                )
+
+        seed_default_knowledge(connection)
 
         connection.commit()
 
@@ -143,6 +248,95 @@ def get_user_by_id(user_id: int):
         ).fetchone()
 
         return dict(row) if row else None
+
+
+def add_knowledge_item(
+    part_category: str,
+    problem: str,
+    symptom: str,
+    suggested_parts: str = "",
+    suggested_tools: str = "",
+    store_notes: str = "",
+    source_label: str = "",
+) -> int:
+    with get_connection() as connection:
+        cursor = connection.execute(
+            """
+            INSERT INTO diagnostic_knowledge (
+                part_category,
+                problem,
+                symptom,
+                suggested_parts,
+                suggested_tools,
+                store_notes,
+                source_label
+            )
+            VALUES (?, ?, ?, ?, ?, ?, ?)
+            """,
+            (
+                part_category,
+                problem,
+                symptom,
+                suggested_parts,
+                suggested_tools,
+                store_notes,
+                source_label,
+            ),
+        )
+        connection.commit()
+        return cursor.lastrowid
+
+
+def get_knowledge_items() -> list[dict]:
+    with get_connection() as connection:
+        rows = connection.execute(
+            """
+            SELECT
+                id,
+                part_category,
+                problem,
+                symptom,
+                suggested_parts,
+                suggested_tools,
+                store_notes,
+                source_label,
+                created_at
+            FROM diagnostic_knowledge
+            ORDER BY created_at DESC, id DESC
+            """
+        ).fetchall()
+        return [dict(row) for row in rows]
+
+
+def search_knowledge_items(query: str) -> list[dict]:
+    normalized_query = query.strip().lower()
+    if not normalized_query:
+        return []
+
+    search_terms = [
+        term for term in re.findall(r"[a-z0-9]+", normalized_query) if len(term) > 2
+    ]
+    scored_items = []
+
+    for item in get_knowledge_items():
+        searchable_text = " ".join(
+            str(item[field]).lower()
+            for field in (
+                "part_category",
+                "problem",
+                "symptom",
+                "suggested_parts",
+                "suggested_tools",
+                "store_notes",
+            )
+        )
+        score = 100 if normalized_query in searchable_text else 0
+        score += sum(searchable_text.count(term) for term in search_terms)
+
+        if score:
+            scored_items.append((score, item))
+
+    return [item for _, item in sorted(scored_items, key=lambda match: match[0], reverse=True)]
 
 
 def add_vehicle(

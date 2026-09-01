@@ -1,13 +1,14 @@
 {% extends "base.html" %}
 
 {% block content %}
-<header class="page-heading"><p class="page-kicker">Diagnostic workspace</p><h1>Run a diagnosis</h1><p class="subtext">Enter an OBD-II code or describe a symptom to receive a structured first-pass inspection guide.</p></header>
+<header class="page-heading"><p class="page-kicker">Diagnostic workspace</p><h1>Understand a vehicle concern</h1><p class="subtext">Enter an OBD-II code or describe the customer complaint / symptom to receive a structured first-pass inspection guide.</p></header>
 <section class="card">
-    <div class="section-heading"><div><p class="section-label">New session</p><h2>Diagnostic input</h2></div></div>
+    <div class="section-heading"><div><p class="section-label">New session</p><h2>Code or customer complaint</h2></div></div>
     <form method="post" action="/diagnose" class="form-grid">
         <div class="full"><label for="diagnosticVehicle">Vehicle context</label><select name="vehicle_id" id="diagnosticVehicle">{% if vehicles %}{% for vehicle in vehicles %}<option value="{{ vehicle.id }}">{{ vehicle.year }} {{ vehicle.make }} {{ vehicle.model }} - {{ "{:,}".format(vehicle.mileage) }} miles</option>{% endfor %}{% else %}<option value="0">No vehicle saved yet</option>{% endif %}</select></div>
-        <div><label for="obdCode">OBD-II code</label><input type="text" name="obd_code" id="obdCode" placeholder="P0301"></div>
-        <div><label for="symptom">Symptom</label><input type="text" name="symptom" id="symptom" placeholder="Car shakes while braking"></div>
+        <p class="muted full">Use either field: enter a code such as “P0301” or describe the problem, such as “my tire is deflating,” “smoking from exhaust,” or “battery keeps dying.”</p>
+        <div><label for="obdCode">OBD-II code (optional)</label><input type="text" name="obd_code" id="obdCode" placeholder="P0301"></div>
+        <div><label for="symptom">Customer complaint / symptom (optional)</label><input type="text" name="symptom" id="symptom" placeholder="Battery keeps dying"></div>
         <button class="button full" type="submit">Analyze vehicle concern</button>
     </form>
 </section>
@@ -21,6 +22,7 @@
         <div class="result-section"><h3>Suggested parts or tools</h3>{% if result.parts %}<ul>{% for part in result.parts %}<li>{{ part }}</li>{% endfor %}</ul>{% else %}<p class="muted">No parts or tools listed.</p>{% endif %}</div>
         <div class="result-section full-result"><h3>Recommended inspection</h3>{% if result.inspection %}<ol>{% for step in result.inspection %}<li>{{ step }}</li>{% endfor %}</ol>{% else %}<p class="muted">No inspection steps listed.</p>{% endif %}</div>
         <div class="result-section full-result"><h3>Parts store guidance</h3>{% if result.parts_store_notes %}<ul>{% for note in result.parts_store_notes %}<li>{{ note }}</li>{% endfor %}</ul>{% else %}<p class="muted">No parts-store guidance listed.</p>{% endif %}</div>
+        <div class="result-section full-result"><h3>Planned store comparison</h3><p class="muted">A future comparison view may help evaluate cost, distance to store, shipping, warranty, and fitment confirmation. Live store inventory and pricing are not connected in this MVP.</p></div>
         <div class="result-section full-result"><h3>Safety note</h3><p class="safety-note">{{ result.safety }}</p></div>
     </div>
 </section>

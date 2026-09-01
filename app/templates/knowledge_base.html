@@ -1,0 +1,32 @@
+{% extends "base.html" %}
+
+{% block content %}
+<header class="page-heading"><p class="page-kicker">AI-ready diagnostic knowledge base</p><h1>Knowledge base</h1><p class="subtext">Add editable local guidance for common customer complaints. These entries are used before the generic symptom fallback; they are not a trained AI model.</p></header>
+{% if message %}<div class="success">{{ message }}</div>{% endif %}
+<section class="card">
+    <div class="section-heading"><div><p class="section-label">New knowledge item</p><h2>Add local guidance</h2></div></div>
+    <form method="post" action="/knowledge-base" class="form-grid">
+        <div><label for="partCategory">Part category</label><input type="text" name="part_category" id="partCategory" placeholder="Battery" required></div>
+        <div><label for="problem">Problem</label><input type="text" name="problem" id="problem" placeholder="Weak or dead battery" required></div>
+        <div class="full"><label for="knowledgeSymptom">Customer complaint / symptom</label><input type="text" name="symptom" id="knowledgeSymptom" placeholder="battery keeps dying" required></div>
+        <div><label for="suggestedParts">Suggested parts</label><input type="text" name="suggested_parts" id="suggestedParts" placeholder="Battery, terminal cleaner"></div>
+        <div><label for="suggestedTools">Suggested tools</label><input type="text" name="suggested_tools" id="suggestedTools" placeholder="Battery tester, multimeter"></div>
+        <div class="full"><label for="storeNotes">Parts-store notes</label><input type="text" name="store_notes" id="storeNotes" placeholder="Test first and confirm fitment before buying."></div>
+        <div class="full"><label for="sourceLabel">Source label</label><input type="text" name="source_label" id="sourceLabel" value="Manual entry"></div>
+        <button class="button full" type="submit">Save knowledge item</button>
+    </form>
+</section>
+<section class="card">
+    <div class="section-heading"><div><p class="section-label">Local entries</p><h2>Current knowledge</h2></div>{% if knowledge_items %}<span class="section-label">{{ knowledge_items|length }} saved</span>{% endif %}</div>
+    {% if knowledge_items %}{% for item in knowledge_items %}
+    <article class="list-item">
+        <strong class="vehicle-name">{{ item.part_category }} — {{ item.problem }}</strong>
+        <p class="vehicle-meta"><strong>Symptom:</strong> {{ item.symptom }}</p>
+        {% if item.suggested_parts %}<p class="vehicle-meta"><strong>Parts:</strong> {{ item.suggested_parts }}</p>{% endif %}
+        {% if item.suggested_tools %}<p class="vehicle-meta"><strong>Tools:</strong> {{ item.suggested_tools }}</p>{% endif %}
+        {% if item.store_notes %}<p class="vehicle-meta"><strong>Store notes:</strong> {{ item.store_notes }}</p>{% endif %}
+        {% if item.source_label %}<p class="vehicle-meta"><strong>Source:</strong> {{ item.source_label }}</p>{% endif %}
+    </article>
+    {% endfor %}{% else %}<div class="empty-state">No knowledge items are available yet.</div>{% endif %}
+</section>
+{% endblock %}

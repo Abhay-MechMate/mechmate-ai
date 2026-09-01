@@ -233,10 +233,59 @@ def add_parts_store_notes(result: dict, vehicle: dict | None) -> dict:
     return result
 
 
+def split_knowledge_values(value: str) -> list[str]:
+    return [item.strip() for item in value.replace(";", ",").split(",") if item.strip()]
+
+
+def knowledge_safety_note(knowledge_item: dict) -> str:
+    knowledge_text = " ".join(
+        str(knowledge_item.get(field, "")).lower()
+        for field in ("part_category", "problem", "symptom", "store_notes")
+    )
+
+    if "tire" in knowledge_text:
+        return "A tire that is losing air can affect handling or fail. Inspect it promptly and avoid driving on a visibly flat tire."
+    if "brake" in knowledge_text or "steering" in knowledge_text:
+        return "A braking or steering concern can affect vehicle control. Inspect it before normal driving."
+    if "overheat" in knowledge_text or "coolant" in knowledge_text:
+        return "Do not open a hot cooling system. Overheating can damage the engine quickly."
+    if "battery" in knowledge_text or "electrical" in knowledge_text:
+        return "Battery and electrical work can create shock, spark, or acid hazards. Use eye protection and avoid shorting battery terminals."
+    if "misfire" in knowledge_text or "smoking" in knowledge_text or "rough idle" in knowledge_text:
+        return "A drivability concern or heavy exhaust smoke should be inspected soon. Avoid hard driving until the cause is confirmed."
+
+    return "This knowledge-base match is a starting point. Confirm the issue before replacing parts or driving with a safety-related concern."
+
+
+def diagnose_knowledge_item(knowledge_item: dict, vehicle: dict | None) -> dict:
+    part_category = knowledge_item.get("part_category", "related component")
+    problem = knowledge_item.get("problem", "reported concern")
+    symptom = knowledge_item.get("symptom", "customer complaint")
+    parts = split_knowledge_values(knowledge_item.get("suggested_parts", ""))
+    tools = split_knowledge_values(knowledge_item.get("suggested_tools", ""))
+    store_notes = split_knowledge_values(knowledge_item.get("store_notes", ""))
+    recommended_items = list(dict.fromkeys(parts + tools)) or [part_category]
+
+    return {
+        "summary": f"Knowledge-base match for “{symptom}”: this may relate to {problem} in the {part_category} category.",
+        "severity": "Needs Inspection",
+        "causes": [problem, f"Possible {part_category} concern"],
+        "inspection": [
+            f"Verify the reported symptom and inspect the {part_category} area.",
+            "Confirm the root cause with appropriate testing before replacing parts.",
+            "Check for related damage, leaks, loose connections, or warning lights.",
+        ],
+        "parts": recommended_items,
+        "parts_store_notes": store_notes + build_parts_store_notes(vehicle, recommended_items),
+        "safety": knowledge_safety_note(knowledge_item),
+    }
+
+
 def run_diagnostic(
     obd_code: str = "",
     symptom: str = "",
     vehicle: dict | None = None,
+    knowledge_item: dict | None = None,
 ):
     obd_code = obd_code.strip().upper()
     symptom = symptom.strip()
@@ -252,6 +301,11 @@ def run_diagnostic(
         result = unknown_code_diagnosis(obd_code)
         result["summary"] = f"{result['summary']} Vehicle context: {vehicle_context}."
         return add_parts_store_notes(result, vehicle), obd_code
+
+    if symptom and knowledge_item:
+        result = diagnose_knowledge_item(knowledge_item, vehicle)
+        result["summary"] = f"{result['summary']} Vehicle context: {vehicle_context}."
+        return result, symptom
 
     if symptom:
         result = diagnose_symptom(symptom)
