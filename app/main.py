@@ -73,6 +73,10 @@ def redirect_with_session(path: str, user_id: int):
     return response
 
 
+def redirect_to_login():
+    return RedirectResponse("/login", status_code=303)
+
+
 def build_voice_vehicle(request_data: VoiceDiagnosticRequest):
     vehicle_values = [
         request_data.year,
@@ -176,7 +180,15 @@ def logout():
 
 @app.get("/vehicles", response_class=HTMLResponse)
 def vehicles_page(request: Request):
-    return render_template(request, "vehicles.html", {"vehicles": get_vehicles()})
+    current_user = get_current_user(request)
+    if not current_user:
+        return redirect_to_login()
+
+    return render_template(
+        request,
+        "vehicles.html",
+        {"vehicles": get_vehicles(current_user["id"])},
+    )
 
 
 @app.post("/vehicles", response_class=HTMLResponse)
@@ -188,17 +200,39 @@ def add_vehicle_page(
     mileage: int = Form(...),
     engine: str = Form(""),
 ):
-    add_vehicle(year=year, make=make, model=model, mileage=mileage, engine=engine)
+    current_user = get_current_user(request)
+    if not current_user:
+        return redirect_to_login()
+
+    add_vehicle(
+        user_id=current_user["id"],
+        year=year,
+        make=make,
+        model=model,
+        mileage=mileage,
+        engine=engine,
+    )
     return render_template(
         request,
         "vehicles.html",
-        {"vehicles": get_vehicles(), "message": "Vehicle saved successfully."},
+        {
+            "vehicles": get_vehicles(current_user["id"]),
+            "message": "Vehicle saved successfully.",
+        },
     )
 
 
 @app.get("/diagnose", response_class=HTMLResponse)
 def diagnose_page(request: Request):
-    return render_template(request, "diagnose.html", {"vehicles": get_vehicles(), "result": None})
+    current_user = get_current_user(request)
+    if not current_user:
+        return redirect_to_login()
+
+    return render_template(
+        request,
+        "diagnose.html",
+        {"vehicles": get_vehicles(current_user["id"]), "result": None},
+    )
 
 
 @app.post("/diagnose", response_class=HTMLResponse)
@@ -208,10 +242,17 @@ def run_diagnosis(
     obd_code: str = Form(""),
     symptom: str = Form(""),
 ):
-    selected_vehicle = get_vehicle(vehicle_id) if vehicle_id > 0 else None
+    current_user = get_current_user(request)
+    if not current_user:
+        return redirect_to_login()
+
+    selected_vehicle = (
+        get_vehicle(vehicle_id, current_user["id"]) if vehicle_id > 0 else None
+    )
     result, input_text = run_diagnostic(obd_code=obd_code, symptom=symptom, vehicle=selected_vehicle)
 
     add_diagnostic_session(
+        user_id=current_user["id"],
         vehicle_id=vehicle_id if selected_vehicle else None,
         input_text=input_text,
         summary=result["summary"],
@@ -227,7 +268,7 @@ def run_diagnosis(
         request,
         "diagnose.html",
         {
-            "vehicles": get_vehicles(),
+            "vehicles": get_vehicles(current_user["id"]),
             "result": result,
             "input_text": input_text,
             "selected_vehicle": selected_vehicle,
@@ -237,7 +278,15 @@ def run_diagnosis(
 
 @app.get("/history", response_class=HTMLResponse)
 def history_page(request: Request):
-    return render_template(request, "history.html", {"history": get_diagnostic_history()})
+    current_user = get_current_user(request)
+    if not current_user:
+        return redirect_to_login()
+
+    return render_template(
+        request,
+        "history.html",
+        {"history": get_diagnostic_history(current_user["id"])},
+    )
 
 
 @app.post("/api/voice/diagnose")

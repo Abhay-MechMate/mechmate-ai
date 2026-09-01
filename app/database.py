@@ -32,12 +32,14 @@ def init_db():
             """
             CREATE TABLE IF NOT EXISTS vehicles (
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
+                user_id INTEGER NOT NULL,
                 year INTEGER NOT NULL,
                 make TEXT NOT NULL,
                 model TEXT NOT NULL,
                 mileage INTEGER NOT NULL,
                 engine TEXT DEFAULT '',
-                created_at TEXT DEFAULT CURRENT_TIMESTAMP
+                created_at TEXT DEFAULT CURRENT_TIMESTAMP,
+                FOREIGN KEY (user_id) REFERENCES users(id)
             )
             """
         )
@@ -46,6 +48,7 @@ def init_db():
             """
             CREATE TABLE IF NOT EXISTS diagnostic_sessions (
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
+                user_id INTEGER NOT NULL,
                 vehicle_id INTEGER,
                 input_text TEXT NOT NULL,
                 summary TEXT NOT NULL,
@@ -56,14 +59,24 @@ def init_db():
                 parts_store_notes TEXT DEFAULT '[]',
                 safety TEXT DEFAULT '',
                 created_at TEXT DEFAULT CURRENT_TIMESTAMP,
+                FOREIGN KEY (user_id) REFERENCES users(id),
                 FOREIGN KEY (vehicle_id) REFERENCES vehicles(id)
             )
             """
         )
 
         # Migration section:
-        # If the table already existed from the previous version,
-        # add the new full-diagnosis columns without deleting old data.
+        # Add ownership columns and full-diagnosis fields to databases created
+        # by earlier versions without deleting their existing records. Legacy
+        # records remain unassigned until an explicit migration is added.
+        vehicle_columns = connection.execute(
+            "PRAGMA table_info(vehicles)"
+        ).fetchall()
+        vehicle_column_names = [column["name"] for column in vehicle_columns]
+
+        if "user_id" not in vehicle_column_names:
+            connection.execute("ALTER TABLE vehicles ADD COLUMN user_id INTEGER")
+
         existing_columns = connection.execute(
             "PRAGMA table_info(diagnostic_sessions)"
         ).fetchall()
@@ -71,6 +84,7 @@ def init_db():
         existing_column_names = [column["name"] for column in existing_columns]
 
         new_columns = {
+            "user_id": "INTEGER",
             "causes": "TEXT DEFAULT '[]'",
             "inspection": "TEXT DEFAULT '[]'",
             "parts": "TEXT DEFAULT '[]'",
@@ -131,42 +145,51 @@ def get_user_by_id(user_id: int):
         return dict(row) if row else None
 
 
-def add_vehicle(year: int, make: str, model: str, mileage: int, engine: str = ""):
+def add_vehicle(
+    user_id: int,
+    year: int,
+    make: str,
+    model: str,
+    mileage: int,
+    engine: str = "",
+) -> int:
     with get_connection() as connection:
         cursor = connection.execute(
             """
-            INSERT INTO vehicles (year, make, model, mileage, engine)
-            VALUES (?, ?, ?, ?, ?)
+            INSERT INTO vehicles (user_id, year, make, model, mileage, engine)
+            VALUES (?, ?, ?, ?, ?, ?)
             """,
-            (year, make, model, mileage, engine),
+            (user_id, year, make, model, mileage, engine),
         )
 
         connection.commit()
         return cursor.lastrowid
 
 
-def get_vehicles():
+def get_vehicles(user_id: int) -> list[dict]:
     with get_connection() as connection:
         rows = connection.execute(
             """
             SELECT id, year, make, model, mileage, engine, created_at
             FROM vehicles
+            WHERE user_id = ?
             ORDER BY created_at DESC, id DESC
-            """
+            """,
+            (user_id,),
         ).fetchall()
 
         return [dict(row) for row in rows]
 
 
-def get_vehicle(vehicle_id: int):
+def get_vehicle(vehicle_id: int, user_id: int) -> dict | None:
     with get_connection() as connection:
         row = connection.execute(
             """
             SELECT id, year, make, model, mileage, engine, created_at
             FROM vehicles
-            WHERE id = ?
+            WHERE id = ? AND user_id = ?
             """,
-            (vehicle_id,),
+            (vehicle_id, user_id),
         ).fetchone()
 
         if row is None:
@@ -176,6 +199,7 @@ def get_vehicle(vehicle_id: int):
 
 
 def add_diagnostic_session(
+    user_id: int,
     vehicle_id: int | None,
     input_text: str,
     summary: str,
@@ -185,11 +209,12 @@ def add_diagnostic_session(
     parts: list[str],
     parts_store_notes: list[str],
     safety: str,
-):
+) -> int:
     with get_connection() as connection:
         cursor = connection.execute(
             """
             INSERT INTO diagnostic_sessions (
+                user_id,
                 vehicle_id,
                 input_text,
                 summary,
@@ -200,9 +225,10 @@ def add_diagnostic_session(
                 parts_store_notes,
                 safety
             )
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
             """,
             (
+                user_id,
                 vehicle_id,
                 input_text,
                 summary,
@@ -219,12 +245,13 @@ def add_diagnostic_session(
         return cursor.lastrowid
 
 
-def get_diagnostic_history():
+def get_diagnostic_history(user_id: int) -> list[dict]:
     with get_connection() as connection:
         rows = connection.execute(
             """
             SELECT
                 diagnostic_sessions.id,
+                diagnostic_sessions.user_id,
                 diagnostic_sessions.vehicle_id,
                 diagnostic_sessions.input_text,
                 diagnostic_sessions.summary,
@@ -243,8 +270,11 @@ def get_diagnostic_history():
             FROM diagnostic_sessions
             LEFT JOIN vehicles
                 ON diagnostic_sessions.vehicle_id = vehicles.id
+                AND diagnostic_sessions.user_id = vehicles.user_id
+            WHERE diagnostic_sessions.user_id = ?
             ORDER BY diagnostic_sessions.created_at DESC, diagnostic_sessions.id DESC
-            """
+            """,
+            (user_id,),
         ).fetchall()
 
         history = []
